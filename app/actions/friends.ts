@@ -125,8 +125,8 @@ export async function getFriends() {
     },
     orderBy: { createdAt: "desc" },
   });
-
-  return friendships.map((f) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return friendships.map((f: any) => {
     const friend = f.user1Id === user.id ? f.user2 : f.user1;
     return {
       id: f.id,
