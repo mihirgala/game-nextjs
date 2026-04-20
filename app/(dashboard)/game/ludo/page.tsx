@@ -65,6 +65,8 @@ interface GameState {
   isGameOver: boolean;
   winnerId: string | null;
   rematchVotes: string[];
+  isBotMatch: boolean;
+  difficulty?: string;
 }
 
 interface RoomMessage {
