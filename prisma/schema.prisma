@@ -1,0 +1,146 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+model User {
+    id               String          @id
+    name             String
+    email            String
+    emailVerified    Boolean         @default(false)
+    image            String?
+    socketId         String?
+    isOnline         Boolean         @default(false)
+    lastOnline       DateTime?
+    createdAt        DateTime        @default(now())
+    updatedAt        DateTime        @updatedAt
+    sessions         Session[]
+    accounts         Account[]
+    matchHistory     MatchPlayer[]
+    friendships1     Friendship[]    @relation("FriendshipUser1")
+    friendships2     Friendship[]    @relation("FriendshipUser2")
+    sentRequests     FriendRequest[] @relation("SentRequests")
+    receivedRequests FriendRequest[] @relation("ReceivedRequests")
+    sentMessages     Message[]       @relation("SentMessages")
+    receivedMessages Message[]       @relation("ReceivedMessages")
+
+    @@unique([email])
+    @@map("user")
+}
+
+model Session {
+    id        String   @id
+    expiresAt DateTime
+    token     String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    ipAddress String?
+    userAgent String?
+    userId    String
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([token])
+    @@index([userId])
+    @@map("session")
+}
+
+model Account {
+    id                    String    @id
+    accountId             String
+    providerId            String
+    userId                String
+    user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    accessToken           String?
+    refreshToken          String?
+    idToken               String?
+    accessTokenExpiresAt  DateTime?
+    refreshTokenExpiresAt DateTime?
+    scope                 String?
+    password              String?
+    createdAt             DateTime  @default(now())
+    updatedAt             DateTime  @updatedAt
+
+    @@index([userId])
+    @@map("account")
+}
+
+model Verification {
+    id         String   @id
+    identifier String
+    value      String
+    expiresAt  DateTime
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+
+    @@index([identifier])
+    @@map("verification")
+}
+
+model Match {
+    id       String   @id @default(cuid())
+    game     String   @default("tictactoe") // e.g. "tictactoe", "ludo"
+    playedAt DateTime @default(now())
+
+    players MatchPlayer[]
+
+    @@map("match")
+}
+
+model MatchPlayer {
+    id       String  @id @default(cuid())
+    matchId  String
+    match    Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+    userId   String? // null if it's a bot
+    user     User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    isBot    Boolean @default(false)
+    isWinner Boolean @default(false)
+    score    Int? // Optional scoring logic
+
+    @@index([matchId])
+    @@index([userId])
+    @@map("match_player")
+}
+
+model Friendship {
+    id        String   @id @default(cuid())
+    user1Id   String
+    user1     User     @relation("FriendshipUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+    user2Id   String
+    user2     User     @relation("FriendshipUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+    createdAt DateTime @default(now())
+
+    // To ensure the relation is unique regardless of order, we enforce unique pairings
+    @@unique([user1Id, user2Id])
+    @@map("friendship")
+}
+
+model FriendRequest {
+    id        String   @id @default(cuid())
+    fromId    String
+    from      User     @relation("SentRequests", fields: [fromId], references: [id], onDelete: Cascade)
+    toId      String
+    to        User     @relation("ReceivedRequests", fields: [toId], references: [id], onDelete: Cascade)
+    status    String   @default("pending") // "pending", "accepted", "rejected"
+    createdAt DateTime @default(now())
+
+    @@unique([fromId, toId])
+    @@map("friend_request")
+}
+
+model Message {
+    id         String   @id @default(cuid())
+    senderId   String
+    sender     User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+    receiverId String? // Only between friends
+    receiver   User?     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+    text       String?
+    media      String?
+    createdAt  DateTime @default(now())
+
+    @@index([senderId])
+    @@index([receiverId])
+    @@map("message")
+}
