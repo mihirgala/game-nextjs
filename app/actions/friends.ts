@@ -158,6 +158,7 @@ export async function getPendingRequests() {
   });
 
   return {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     received: received.map((r) => ({
       id: r.id,
       from: {
@@ -202,7 +203,7 @@ export async function findUsers(query: string) {
     take: 10,
     select: { id: true, name: true, email: true, image: true, isOnline: true },
   });
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return users.map(u => ({
     ...u,
     name: u.name?.trim() || u.email.split("@")[0] || "Unknown User"
