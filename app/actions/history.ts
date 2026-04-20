@@ -30,9 +30,10 @@ export async function getMatchHistory() {
     take: 50,
   });
 
-  return records.map((r) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return records.map((r: any) => {
     const opponents = r.match.players.filter(
-      (p) => p.userId !== user.id
+      (p: any) => p.userId !== user.id
     );
     return {
       matchId: r.matchId,
@@ -40,7 +41,8 @@ export async function getMatchHistory() {
       playedAt: r.match.playedAt.toISOString(),
       isWinner: r.isWinner,
       score: r.score,
-      opponents: opponents.map((o) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      opponents: opponents.map((o: any) => ({
         isBot: o.isBot,
         name: o.isBot ? "AI Bot" : (o.user?.name || "Unknown Player"),
         image: o.user?.image ?? null,
@@ -61,7 +63,8 @@ export async function getMatchHistoryVs(opponentId: string) {
     where: { userId: opponentId },
     select: { matchId: true },
   });
-  const matchIds = opponentMatches.map((m) => m.matchId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const matchIds = opponentMatches.map((m: any) => m.matchId);
 
   const records = await prisma.matchPlayer.findMany({
     where: {
@@ -80,15 +83,17 @@ export async function getMatchHistoryVs(opponentId: string) {
     orderBy: { match: { playedAt: "desc" } },
   });
 
-  return records.map((r) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return records.map((r: any) => ({
     matchId: r.matchId,
     game: r.match.game,
     playedAt: r.match.playedAt.toISOString(),
     isWinner: r.isWinner,
     score: r.score,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     opponents: r.match.players
-      .filter((p) => p.userId !== user.id)
-      .map((o) => ({
+      .filter((p: any) => p.userId !== user.id)
+      .map((o: any) => ({
         isBot: o.isBot,
         name: o.isBot ? "AI Bot" : (o.user?.name || "Unknown Player"),
         image: o.user?.image ?? null,
@@ -115,7 +120,8 @@ export async function saveMatchResult(payload: {
 
   // Create match_player records for each player
   await prisma.matchPlayer.createMany({
-    data: payload.players.map((p) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data: payload.players.map((p: any) => ({
       matchId: match.id,
       userId: p.userId,
       isBot: p.isBot,

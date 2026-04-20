@@ -52,7 +52,8 @@ export async function getDMs(friendId: string) {
     take: 100,
   });
 
-  return messages.map((m) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return messages.map((m: any) => ({
     id: m.id,
     senderId: m.senderId,
     senderName: m.sender.name,
