@@ -32,7 +32,16 @@ const GAMES: Game[] = [
   },
   {
     id: "ludo",
-    name: "Ludo",
+    name: "Ludo (Made with AI)",
+    description: "Race your tokens across the board in this multiplayer classic.",
+    icon: Dices,
+    color: "text-orange-500",
+    available: true,
+    players: "2-4",
+  },
+  {
+    id: "ludoMihir",
+    name: "Ludo (Made by mihir)",
     description: "Race your tokens across the board in this multiplayer classic.",
     icon: Dices,
     color: "text-orange-500",
@@ -83,13 +92,12 @@ export function GamePicker({ user }: GamePickerProps) {
         {GAMES.map((game) => {
           const Icon = game.icon;
           return (
-            <Card 
-              key={game.id} 
-              className={`relative overflow-hidden transition-all duration-300 ${
-                game.available 
-                  ? "hover:shadow-lg hover:-translate-y-1 cursor-pointer border-primary/20" 
+            <Card
+              key={game.id}
+              className={`relative overflow-hidden transition-all duration-300 ${game.available
+                  ? "hover:shadow-lg hover:-translate-y-1 cursor-pointer border-primary/20"
                   : "opacity-70 grayscale-[0.5]"
-              }`}
+                }`}
             >
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start mb-2">
@@ -107,7 +115,7 @@ export function GamePicker({ user }: GamePickerProps) {
                   {game.description}
                 </CardDescription>
               </CardHeader>
-              
+
               <CardContent className="pb-4 space-y-4">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Users className="w-3.5 h-3.5" />
@@ -116,8 +124,8 @@ export function GamePicker({ user }: GamePickerProps) {
               </CardContent>
 
               <CardFooter className="flex flex-col gap-2">
-                <Button 
-                  className="w-full justify-between" 
+                <Button
+                  className="w-full justify-between"
                   variant={game.available ? "default" : "outline"}
                   disabled={!game.available}
                   onClick={() => router.push(`/game/${game.id}`)}
@@ -126,14 +134,14 @@ export function GamePicker({ user }: GamePickerProps) {
                   {game.available && <ArrowRight className="w-4 h-4" />}
                 </Button>
                 {game.available && (
-                   <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     className="w-full h-8 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-primary"
                     onClick={() => broadcastInvite(game.id)}
-                   >
-                     <Sparkles className="w-3 h-3 mr-2" />
-                     Broadcast to Lobby
-                   </Button>
+                  >
+                    <Sparkles className="w-3 h-3 mr-2" />
+                    Broadcast to Lobby
+                  </Button>
                 )}
               </CardFooter>
             </Card>

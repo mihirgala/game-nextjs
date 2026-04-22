@@ -225,7 +225,7 @@ function LudoContent() {
           </Badge>
           <h1 className="text-3xl md:text-5xl font-black tracking-tight flex items-center justify-center gap-3 md:gap-4">
             <Dices className="w-8 h-8 md:w-12 md:h-12 text-primary" />
-            LUDO ARENA
+            LUDO ARENA (Made with AI)
           </h1>
           <p className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto">
             The ultimate race home. Play with up to 4 players and prove your strategy.
@@ -389,6 +389,7 @@ function LudoContent() {
                   diceValue={gameState.diceValue}
                   onPieceClick={movePiece}
                   disabled={!isMyTurn || gameState.waitingForRoll}
+                  difficulty={gameState.difficulty}
                 />
               </div>
             )}

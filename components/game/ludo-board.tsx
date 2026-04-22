@@ -23,6 +23,7 @@ interface LudoBoardProps {
   onPieceClick: (pieceId: number) => void;
   disabled: boolean;
   diceValue: number | null;
+  difficulty?: string;
 }
 
 // ─── Constants & Calculations ────────────────────────────────────────────────
@@ -91,12 +92,40 @@ function generatePath(startIndex: number): [number, number][] {
   return p;
 }
 
-export function LudoBoard({ players, turnIndex, onPieceClick, disabled, diceValue }: LudoBoardProps) {
+export function LudoBoard({ players, turnIndex, onPieceClick, disabled, diceValue, difficulty }: LudoBoardProps) {
+  const winProbabilities = useMemo(() => {
+    const scores = players.map(player => {
+      if (player.pieces.length === 0) return 0;
+      const totalDistance = player.pieces.reduce((sum, p) => {
+        if (p.isHome) return sum + 0;
+        // Progress: -6 for base, 0-51 path, 52-57 home stretch
+        const progress = p.position === -1 ? -6 : p.position;
+        return sum + (57 - progress);
+      }, 0);
+      // Higher score for lower distance. Use power to emphasize lead.
+      return Math.pow(1 / (totalDistance || 1), 1.5);
+    });
+    const totalScore = scores.reduce((a, b) => a + b, 0) || 1;
+    return scores.map(s => Math.round((s / totalScore) * 100));
+  }, [players]);
+
   // Base rendering helpers ...
-  const renderBase = (color: string, x: number, y: number) => (
+  const renderBase = (color: string, x: number, y: number, pIdx: number) => (
     <g transform={`translate(${x * CELL_SIZE}, ${y * CELL_SIZE})`}>
       <rect width={CELL_SIZE * 6} height={CELL_SIZE * 6} fill={COLORS[color]} opacity="0.2" rx="8" />
       <rect x={CELL_SIZE} y={CELL_SIZE} width={CELL_SIZE * 4} height={CELL_SIZE * 4} fill="white" rx="4" />
+      
+      {/* Win Probability Display */}
+      <text 
+        x={CELL_SIZE * 3} 
+        y={CELL_SIZE * 3} 
+        textAnchor="middle" 
+        dominantBaseline="middle" 
+        className="text-[10px] font-black fill-current opacity-40 select-none uppercase tracking-tighter"
+      >
+        {winProbabilities[pIdx]}% WIN
+      </text>
+
       {/* 4 Slots for pieces */}
       {[0, 1, 2, 3].map(i => (
          <circle 
@@ -129,10 +158,19 @@ export function LudoBoard({ players, turnIndex, onPieceClick, disabled, diceValu
         <polygon points={`${6 * CELL_SIZE},${9 * CELL_SIZE} ${15/2 * CELL_SIZE},${15/2 * CELL_SIZE} ${9 * CELL_SIZE},${9 * CELL_SIZE}`} fill={COLORS.blue} opacity="0.3" />
 
         {/* Bases */}
-        {renderBase("red", 0, 0)}
-        {renderBase("green", 9, 0)}
-        {renderBase("yellow", 9, 9)}
-        {renderBase("blue", 0, 9)}
+        {renderBase("red", 0, 0, 0)}
+        {renderBase("green", 9, 0, 1)}
+        {renderBase("yellow", 9, 9, 2)}
+        {renderBase("blue", 0, 9, 3)}
+
+        {/* Global Info Overlays */}
+        {difficulty && (
+           <g transform={`translate(${7.5 * CELL_SIZE}, ${0.5 * CELL_SIZE})`}>
+             <text textAnchor="middle" className="text-[8px] font-bold fill-primary opacity-50 uppercase tracking-widest">
+               Rank: {difficulty}
+             </text>
+           </g>
+        )}
 
         {/* Home Stretches */}
         {[0, 1, 2, 3, 4].map(i => (
