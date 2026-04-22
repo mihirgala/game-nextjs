@@ -114,7 +114,8 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
         winners: remoteRoom.winnerId ? [remoteRoom.players.find((p: any) => p.userId === remoteRoom.winnerId)?.color as PlayerColor] : [],
         playerCount: remoteRoom.players.length,
         gameStarted: true,
-        status: remoteRoom.status
+        status: remoteRoom.status,
+        pityCounters: remoteRoom.pityCounters || { red: 0, green: 0, yellow: 0, blue: 0 }
     };
 
     const myColor = remoteRoom.players.find((p: any) => p.userId === user?.id)?.color;

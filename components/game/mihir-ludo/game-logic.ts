@@ -10,7 +10,7 @@ const createInitialPieces = (playerCount: number): Piece[] => {
   const pieces: Piece[] = [];
   const activeColors = COLORS.slice(0, playerCount);
   // For 2 players, use Red and Yellow for better balance (opposite sides)
-  const finalColors = playerCount === 2 ? ['red', 'yellow'] : activeColors;
+  const finalColors: PlayerColor[] = playerCount === 2 ? ['red', 'yellow'] : activeColors;
   
   finalColors.forEach((color) => {
     for (let i = 0; i < 4; i++) {
