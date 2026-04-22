@@ -48,6 +48,9 @@ export function SocketProvider({ user, children }: SocketProviderProps) {
     const s = io(socketUrl, {
       auth: { userId: user.id, userName: user.name, userImage: user.image },
       transports: ["websocket"],
+      extraHeaders: {
+        "ngrok-skip-browser-warning": "true",
+      },
     });
 
     s.on("connect", () => console.log("SocketProvider connected"));
@@ -62,9 +65,9 @@ export function SocketProvider({ user, children }: SocketProviderProps) {
           onClick: () => {
             s.emit("room:validate", payload.roomId, (res: { valid: boolean; error?: string }) => {
               if (res.valid) {
-                 router.push(`/game/${payload.game}?roomId=${payload.roomId}`);
+                router.push(`/game/${payload.game}?roomId=${payload.roomId}`);
               } else {
-                 toast.error(res.error || "This invite has expired.", { duration: 10000 });
+                toast.error(res.error || "This invite has expired.", { duration: 10000 });
               }
             });
           },
@@ -83,9 +86,9 @@ export function SocketProvider({ user, children }: SocketProviderProps) {
             onClick: () => {
               s.emit("room:validate", msg.invite.roomId, (res: { valid: boolean; error?: string }) => {
                 if (res.valid) {
-                   router.push(`/game/${msg.invite.game}?roomId=${msg.invite.roomId}`);
+                  router.push(`/game/${msg.invite.game}?roomId=${msg.invite.roomId}`);
                 } else {
-                   toast.error(res.error || "This game lobby has expired.", { duration: 10000 });
+                  toast.error(res.error || "This game lobby has expired.", { duration: 10000 });
                 }
               });
             },
