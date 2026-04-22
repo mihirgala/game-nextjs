@@ -124,40 +124,32 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
         const path = getMovePath(piece.position, gameState.currentTurn, gameState.diceValue);
         if (path.length === 0) return;
 
+        const finalState = performMove(gameState, pieceId);
+
         // Start animation sequence
         let currentStep = 0;
         let animationTimer: any;
 
         const animate = () => {
             if (currentStep >= path.length) {
-                // Finalize move using the LATEST state to avoid race conditions
-                setRemoteRoom((currentRoom: any) => {
-                    if (!currentRoom) return currentRoom;
-                    const latestGameState = mappedGameState(currentRoom);
-                    const nextState = performMove(latestGameState, pieceId);
-                    const nextTurnIndex = currentRoom.players.findIndex((p: any) => p.color === nextState.currentTurn);
+                // Finalize move using the PRE-CALCULATED finalState
+                const nextTurnIndex = remoteRoom.players.findIndex((p: any) => p.color === finalState.currentTurn);
 
-                    syncState({
-                        pieces: nextState.pieces,
-                        diceValue: null,
-                        winners: nextState.winners,
-                        turnIndex: nextTurnIndex,
-                        isAnimating: false
-                    });
-                    return currentRoom;
+                syncState({
+                    pieces: finalState.pieces,
+                    diceValue: null,
+                    winners: finalState.winners,
+                    turnIndex: nextTurnIndex,
+                    isAnimating: false
                 });
                 return;
             }
 
             const nextPos = path[currentStep];
-            // Only broadcast the moving piece's position change
-            setRemoteRoom((currentRoom: any) => {
-                if (!currentRoom) return currentRoom;
-                syncState({
-                    isAnimating: true,
-                    pieces: currentRoom.pieces.map((p: any) => p.id === pieceId ? { ...p, position: nextPos } : p)
-                });
-                return currentRoom;
+            // Only broadcast the moving piece's position change for animation
+            syncState({
+                isAnimating: true,
+                pieces: gameState.pieces.map((p: any) => p.id === pieceId ? { ...p, position: nextPos } : p)
             });
 
             currentStep++;

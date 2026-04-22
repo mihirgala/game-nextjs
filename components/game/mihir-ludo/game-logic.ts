@@ -248,15 +248,14 @@ export const useLudoLogic = () => {
       const path = getMovePath(piece.position, prev.currentTurn, prev.diceValue);
       if (path.length === 0) return prev;
 
+      const finalState = performMove(prev, pieceId);
+
       // Start animation
       let currentStep = 0;
       const animate = () => {
         if (currentStep >= path.length) {
-          // Finalize move
-          setGameState(st => {
-            const finalState = performMove({ ...st, isAnimating: false }, pieceId);
-            return finalState;
-          });
+          // Finalize move using pre-calculated final state
+          setGameState({ ...finalState, isAnimating: false });
           return;
         }
 
@@ -271,8 +270,6 @@ export const useLudoLogic = () => {
         setTimeout(animate, 250);
       };
 
-      // We need to return an intermediate state that starts the animation
-      // or just call animate() and return the current state with isAnimating: true
       setTimeout(animate, 0);
       return { ...prev, isAnimating: true };
     });
