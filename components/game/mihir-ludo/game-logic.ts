@@ -45,7 +45,7 @@ export const getNextTurn = (
     const nextIndex = (currentIndex + i) % activeColors.length;
     const nextColor = activeColors[nextIndex];
     const playerPieces = pieces.filter(p => p.color === nextColor);
-    const isFinished = playerPieces.every(p => p.position === 57);
+    const isFinished = playerPieces.every(p => p.position === 61);
     if (!isFinished) return nextColor;
   }
   return currentColor;
@@ -75,7 +75,7 @@ export const performRoll = (state: GameState, forcedRoll?: number): GameState =>
 
   const canMove = playerPieces.length > 0 && playerPieces.some(p => {
     if (p.position === -1) return roll === 6;
-    if (p.position >= 52) return p.position + roll <= 57;
+    if (p.position >= 56) return p.position + roll <= 61;
     return true;
   });
 
@@ -102,7 +102,7 @@ export const performRoll = (state: GameState, forcedRoll?: number): GameState =>
 export const getMovePath = (startPos: number, color: PlayerColor, steps: number): number[] => {
   const path: number[] = [];
   const startIdx = START_INDICES[color];
-  const preHomeIdx = (startIdx + 51) % 52;
+  const preHomeIdx = (startIdx + 54) % 56;
 
   if (startPos === -1) {
     if (steps === 6) return [startIdx];
@@ -111,14 +111,14 @@ export const getMovePath = (startPos: number, color: PlayerColor, steps: number)
 
   let current = startPos;
   for (let i = 0; i < steps; i++) {
-    if (current >= 0 && current <= 51) {
+    if (current >= 0 && current <= 55) {
       if (current === preHomeIdx) {
-        current = 52;
+        current = 56;
       } else {
-        current = (current + 1) % 52;
+        current = (current + 1) % 56;
       }
-    } else if (current >= 52) {
-      if (current < 58) {
+    } else if (current >= 56) {
+      if (current < 61) {
         current++;
       } else {
         break; // Already at home
@@ -145,7 +145,7 @@ export const performMove = (state: GameState, pieceId: string): GameState => {
   let newPieces = [...pieces];
   let extraTurn = false;
 
-  if (nextPos >= 0 && nextPos <= 51) {
+  if (nextPos >= 0 && nextPos <= 55) {
     const IS_SAFE = SAFE_SPOTS.includes(nextPos);
     if (!IS_SAFE) {
       const opponentPieces = newPieces.filter(p => p.position === nextPos && p.color !== currentTurn);
@@ -164,9 +164,9 @@ export const performMove = (state: GameState, pieceId: string): GameState => {
   }
 
   newPieces = newPieces.map(p => p.id === pieceId ? { ...p, position: nextPos } : p);
-  if (nextPos === 58) extraTurn = true;
+  if (nextPos === 61) extraTurn = true;
 
-  const isFinished = newPieces.filter(p => p.color === currentTurn).every(p => p.position === 58);
+  const isFinished = newPieces.filter(p => p.color === currentTurn).every(p => p.position === 61);
   let newWinners = winners;
   if (isFinished && !winners.includes(currentTurn)) {
     newWinners = [...winners, currentTurn];
@@ -286,7 +286,7 @@ export const useLudoLogic = () => {
       const playerPieces = pieces.filter(p => p.color === currentTurn);
       const movablePieces = playerPieces.filter(p => {
         if (p.position === -1) return diceValue === 6;
-        if (p.position >= 52) return p.position + diceValue <= 58;
+        if (p.position >= 56) return p.position + diceValue <= 61;
         return true;
       });
 

@@ -91,22 +91,27 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
         syncState({ isRolling: true, diceValue: null });
 
         setTimeout(() => {
-            const nextState = performRoll(gameState);
+            // Re-check turn before applying roll
+            setRemoteRoom((currentRoom: any) => {
+                if (!currentRoom) return currentRoom;
+                const nextState = performRoll(mappedGameState(currentRoom));
 
-            if (nextState._pendingTurn) {
-                const finalTurnColor = nextState._pendingTurn;
-                delete nextState._pendingTurn;
-                syncState(nextState);
+                if (nextState._pendingTurn) {
+                    const finalTurnColor = nextState._pendingTurn;
+                    delete nextState._pendingTurn;
+                    syncState(nextState);
 
-                setTimeout(() => {
-                    syncState({
-                        diceValue: null,
-                        turnIndex: remoteRoom.players.findIndex((p: any) => p.color === finalTurnColor)
-                    });
-                }, 1000);
-            } else {
-                syncState(nextState);
-            }
+                    setTimeout(() => {
+                        syncState({
+                            diceValue: null,
+                            turnIndex: currentRoom.players.findIndex((p: any) => p.color === finalTurnColor)
+                        });
+                    }, 1000);
+                } else {
+                    syncState(nextState);
+                }
+                return currentRoom;
+            });
         }, 600);
     };
 
@@ -121,32 +126,46 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
 
         // Start animation sequence
         let currentStep = 0;
+        let animationTimer: any;
+
         const animate = () => {
             if (currentStep >= path.length) {
-                const nextState = performMove(gameState, pieceId);
-                const nextTurnIndex = remoteRoom.players.findIndex((p: any) => p.color === nextState.currentTurn);
+                // Finalize move using the LATEST state to avoid race conditions
+                setRemoteRoom((currentRoom: any) => {
+                    if (!currentRoom) return currentRoom;
+                    const latestGameState = mappedGameState(currentRoom);
+                    const nextState = performMove(latestGameState, pieceId);
+                    const nextTurnIndex = currentRoom.players.findIndex((p: any) => p.color === nextState.currentTurn);
 
-                syncState({
-                    pieces: nextState.pieces,
-                    diceValue: null,
-                    winners: nextState.winners,
-                    turnIndex: nextTurnIndex,
-                    isAnimating: false
+                    syncState({
+                        pieces: nextState.pieces,
+                        diceValue: null,
+                        winners: nextState.winners,
+                        turnIndex: nextTurnIndex,
+                        isAnimating: false
+                    });
+                    return currentRoom;
                 });
                 return;
             }
 
             const nextPos = path[currentStep];
-            syncState({
-                isAnimating: true,
-                pieces: gameState.pieces.map(p => p.id === pieceId ? { ...p, position: nextPos } : p)
+            // Only broadcast the moving piece's position change
+            setRemoteRoom((currentRoom: any) => {
+                if (!currentRoom) return currentRoom;
+                syncState({
+                    isAnimating: true,
+                    pieces: currentRoom.pieces.map((p: any) => p.id === pieceId ? { ...p, position: nextPos } : p)
+                });
+                return currentRoom;
             });
 
             currentStep++;
-            setTimeout(animate, 250);
+            animationTimer = setTimeout(animate, 250);
         };
 
         animate();
+        return () => clearTimeout(animationTimer);
     };
 
     const startGame = () => {
@@ -167,7 +186,7 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
 
     // Bot Logic (Run by host)
     useEffect(() => {
-        if (!isHost || !remoteRoom || remoteRoom.status !== 'playing' || remoteRoom.isGameOver) return;
+        if (!isHost || !remoteRoom || remoteRoom.status !== 'playing' || remoteRoom.isGameOver || remoteRoom.isAnimating) return;
 
         const currentPlayer = remoteRoom.players[remoteRoom.turnIndex];
         if (!currentPlayer || !currentPlayer.isBot) return;
@@ -193,7 +212,7 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
                 const playerPieces = gameState.pieces.filter(p => p.color === gameState.currentTurn);
                 const movablePieces = playerPieces.filter(p => {
                     if (p.position === -1) return gameState.diceValue === 6;
-                    if (p.position >= 52) return p.position + gameState.diceValue! <= 58;
+                    if (p.position >= 56) return p.position + gameState.diceValue! <= 61;
                     return true;
                 });
 
@@ -217,12 +236,12 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
 
     // Auto-move for local player
     useEffect(() => {
-        if (!isMyTurn || !remoteRoom || remoteRoom.diceValue === null || remoteRoom.isRolling) return;
+        if (!isMyTurn || !remoteRoom || remoteRoom.diceValue === null || remoteRoom.isRolling || remoteRoom.isAnimating) return;
 
         const playerPieces = gameState.pieces.filter(p => p.color === gameState.currentTurn);
         const movablePieces = playerPieces.filter(p => {
             if (p.position === -1) return gameState.diceValue === 6;
-            if (p.position >= 52) return p.position + gameState.diceValue! <= 58;
+            if (p.position >= 56) return p.position + gameState.diceValue! <= 61;
             return true;
         });
 
