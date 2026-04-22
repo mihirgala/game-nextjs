@@ -222,13 +222,13 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
 
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-4">
-                         <Dice value={diceValue || 1} isRolling={isRolling} onRoll={rollDice} disabled={diceValue !== null || isRolling} color={currentTurn} />
+                         <Dice value={diceValue} isRolling={isRolling} color={currentTurn} />
                          <div className="flex-1">
                             <button 
                                 onClick={rollDice} 
                                 disabled={diceValue !== null || isRolling || !canInteract || gameState.isAnimating}
                                 className={cn(
-                                    "w-full py-4 font-black transition-all active:scale-95 disabled:opacity-50 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
+                                    "w-full py-4 font-black transition-all active:scale-95 disabled:opacity-50 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]",
                                     COLOR_MAP[currentTurn],
                                     "text-white text-xl uppercase tracking-widest",
                                     (!canInteract && diceValue === null) && "grayscale opacity-50 cursor-not-allowed"
