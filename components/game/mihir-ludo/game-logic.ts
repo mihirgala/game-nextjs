@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { PlayerColor, Piece, GameState } from './types';
-import { START_INDICES } from './board-constants';
+import { START_INDICES, SAFE_SPOTS } from './board-constants';
 
 const COLORS: PlayerColor[] = ['red', 'green', 'yellow', 'blue'];
 
@@ -118,7 +118,7 @@ export const getMovePath = (startPos: number, color: PlayerColor, steps: number)
         current = (current + 1) % 52;
       }
     } else if (current >= 52) {
-      if (current < 57) {
+      if (current < 58) {
         current++;
       } else {
         break; // Already at home
@@ -146,20 +146,27 @@ export const performMove = (state: GameState, pieceId: string): GameState => {
   let extraTurn = false;
 
   if (nextPos >= 0 && nextPos <= 51) {
-    const IS_SAFE = [0, 8, 13, 21, 26, 34, 39, 47].some(idx => idx === nextPos);
+    const IS_SAFE = SAFE_SPOTS.includes(nextPos);
     if (!IS_SAFE) {
-      const victimIdx = newPieces.findIndex(p => p.position === nextPos && p.color !== currentTurn);
-      if (victimIdx !== -1) {
-        newPieces[victimIdx] = { ...newPieces[victimIdx], position: -1 };
+      const opponentPieces = newPieces.filter(p => p.position === nextPos && p.color !== currentTurn);
+      // Blockade: 2 or more pieces of the same color on a non-safe spot cannot be captured
+      const isBlockade = opponentPieces.length >= 2;
+      
+      if (!isBlockade && opponentPieces.length > 0) {
+        newPieces = newPieces.map(p => 
+          (p.position === nextPos && p.color !== currentTurn) 
+            ? { ...p, position: -1 } 
+            : p
+        );
         extraTurn = true;
       }
     }
   }
 
   newPieces = newPieces.map(p => p.id === pieceId ? { ...p, position: nextPos } : p);
-  if (nextPos === 57) extraTurn = true;
+  if (nextPos === 58) extraTurn = true;
 
-  const isFinished = newPieces.filter(p => p.color === currentTurn).every(p => p.position === 57);
+  const isFinished = newPieces.filter(p => p.color === currentTurn).every(p => p.position === 58);
   let newWinners = winners;
   if (isFinished && !winners.includes(currentTurn)) {
     newWinners = [...winners, currentTurn];
@@ -279,7 +286,7 @@ export const useLudoLogic = () => {
       const playerPieces = pieces.filter(p => p.color === currentTurn);
       const movablePieces = playerPieces.filter(p => {
         if (p.position === -1) return diceValue === 6;
-        if (p.position >= 52) return p.position + diceValue <= 57;
+        if (p.position >= 52) return p.position + diceValue <= 58;
         return true;
       });
 

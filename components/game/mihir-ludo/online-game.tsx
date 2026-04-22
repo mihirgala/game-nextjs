@@ -193,7 +193,7 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
                 const playerPieces = gameState.pieces.filter(p => p.color === gameState.currentTurn);
                 const movablePieces = playerPieces.filter(p => {
                     if (p.position === -1) return gameState.diceValue === 6;
-                    if (p.position >= 52) return p.position + gameState.diceValue! <= 57;
+                    if (p.position >= 52) return p.position + gameState.diceValue! <= 58;
                     return true;
                 });
 
@@ -222,7 +222,7 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
         const playerPieces = gameState.pieces.filter(p => p.color === gameState.currentTurn);
         const movablePieces = playerPieces.filter(p => {
             if (p.position === -1) return gameState.diceValue === 6;
-            if (p.position >= 52) return p.position + gameState.diceValue! <= 57;
+            if (p.position >= 52) return p.position + gameState.diceValue! <= 58;
             return true;
         });
 

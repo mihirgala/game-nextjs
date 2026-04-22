@@ -6,7 +6,8 @@ import {
     BOARD_SIZE,
     TRACK_COORDS,
     HOME_PATHS,
-    HOME_BASES
+    HOME_BASES,
+    SAFE_SPOTS
 } from './board-constants';
 import { cn } from '@/lib/utils';
 import { Dice } from '@/components/game/mihir-ludo/dice';
@@ -45,10 +46,10 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
             if (coords.some(coord => coord.r === r && coord.c === c)) return { type: 'home-path', color: color as PlayerColor };
         }
         if (TRACK_COORDS.some(coord => coord.r === r && coord.c === c)) {
-            if (r === 6 && c === 1) return { type: 'track', color: 'red' as PlayerColor };
-            if (r === 1 && c === 8) return { type: 'track', color: 'green' as PlayerColor };
-            if (r === 8 && c === 13) return { type: 'track', color: 'yellow' as PlayerColor };
-            if (r === 13 && c === 6) return { type: 'track', color: 'blue' as PlayerColor };
+            if (r === 6 && c === 0) return { type: 'track', color: 'red' as PlayerColor };
+            if (r === 0 && c === 8) return { type: 'track', color: 'green' as PlayerColor };
+            if (r === 8 && c === 14) return { type: 'track', color: 'yellow' as PlayerColor };
+            if (r === 14 && c === 6) return { type: 'track', color: 'blue' as PlayerColor };
             return { type: 'track' };
         }
         if (r < 6 && c < 6) return { type: 'base', color: 'red' as PlayerColor };
@@ -141,23 +142,55 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                                                 }[cell.color!],
                                                 cell.type === 'home-path' && COLOR_MAP[cell.color!],
                                                 cell.type === 'track' && cell.color && COLOR_MAP[cell.color!],
-                                                cell.type === 'finish' && 'bg-gray-200',
+                                                cell.type === 'finish' && 'bg-white',
                                                 cell.type === 'empty' && 'bg-white'
                                             )}
                                             style={{ minWidth: 0, minHeight: 0 }}
                                         >
+                                            {cell.type === 'finish' && r === 7 && c === 7 && (
+                                                <div className="absolute inset-0 overflow-hidden">
+                                                    <div className="w-full h-full relative border-2 border-black">
+                                                        <div className="absolute inset-0 bg-red-500" style={{ clipPath: 'polygon(0 0, 50% 50%, 0 100%)' }} />
+                                                        <div className="absolute inset-0 bg-green-500" style={{ clipPath: 'polygon(0 0, 100% 0, 50% 50%)' }} />
+                                                        <div className="absolute inset-0 bg-yellow-400" style={{ clipPath: 'polygon(100% 0, 100% 100%, 50% 50%)' }} />
+                                                        <div className="absolute inset-0 bg-blue-500" style={{ clipPath: 'polygon(0 100%, 100% 100%, 50% 50%)' }} />
+                                                        <div className="absolute inset-[25%] bg-white border-2 border-black rounded-full" />
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {cell.type === 'finish' && (r !== 7 || c !== 7) && (
+                                                <div className={cn(
+                                                    "absolute inset-0 opacity-50",
+                                                    r === 7 && c < 7 && "bg-red-200",
+                                                    r < 7 && c === 7 && "bg-green-200",
+                                                    r === 7 && c > 7 && "bg-yellow-100",
+                                                    r > 7 && c === 7 && "bg-blue-200",
+                                                )} />
+                                            )}
+
+                                            {trackIndex !== -1 && SAFE_SPOTS.includes(trackIndex) && (
+                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+                                                    <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current">
+                                                        <path d="M12 .587l3.668 7.431 8.332 1.21-6.001 5.85 1.416 8.297L12 18.897l-7.415 3.898 1.416-8.297-6.001-5.85 8.332-1.21L12 .587z" />
+                                                    </svg>
+                                                </div>
+                                            )}
                                             <span className="absolute inset-0 flex items-center justify-center text-[8px] opacity-10 select-none pointer-events-none font-bold">
                                                 {trackIndex !== -1 && `P${trackIndex + 1}`}
                                                 {homeIndex !== -1 && `${homeColor?.charAt(0).toUpperCase()}H${homeIndex + 1}`}
                                                 {baseColor && `${baseColor.charAt(0).toUpperCase()}B`}
                                             </span>
 
-                                            <div className="absolute inset-0 flex flex-wrap gap-0.5 items-center justify-center p-0.5 pointer-events-none">
+                                            <div className={cn(
+                                                "absolute inset-0 flex flex-wrap gap-0.5 items-center justify-center p-0.5 pointer-events-none",
+                                                r === 7 && c === 7 && "flex-col" // Stack pieces in center
+                                            )}>
                                                 {cellPieces.map((p) => {
                                                     const canMovePiece = diceValue !== null && (
                                                         (p.position === -1 && diceValue === 6) ||
                                                         (p.position >= 0 && p.position <= 51) ||
-                                                        (p.position >= 52 && p.position + diceValue <= 57)
+                                                        (p.position >= 52 && p.position + diceValue <= 58)
                                                     );
 
                                                     return (
@@ -169,7 +202,14 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                                                                 "w-4 h-4 sm:w-5 sm:h-5 border-2 border-black rounded-full shadow-sm z-10 transition-all duration-300 pointer-events-auto",
                                                                 COLOR_MAP[p.color],
                                                                 p.color === currentTurn && diceValue !== null && canMovePiece && "ring-2 ring-white scale-125 z-20 animate-pulse",
-                                                                (p.color !== currentTurn || !canMovePiece) && "opacity-50 cursor-not-allowed"
+                                                                (p.color !== currentTurn || !canMovePiece) && "opacity-50 cursor-not-allowed",
+                                                                // Custom positioning in the center cell
+                                                                r === 7 && c === 7 && {
+                                                                    red: "translate-x-[-8px]",
+                                                                    green: "translate-y-[-8px]",
+                                                                    yellow: "translate-x-[8px]",
+                                                                    blue: "translate-y-[8px]"
+                                                                }[p.color]
                                                             )}
                                                         />
                                                     );
