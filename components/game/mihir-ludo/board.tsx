@@ -135,7 +135,7 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                                         <div 
                                             key={`${r}-${c}`}
                                             className={cn(
-                                                "border border-gray-200 flex items-center justify-center relative",
+                                                "border border-gray-200 flex items-center justify-center relative overflow-hidden",
                                                 cell.type === 'base' && {
                                                     red: 'bg-red-50', green: 'bg-green-50', yellow: 'bg-yellow-50', blue: 'bg-blue-50'
                                                 }[cell.color!],
@@ -144,6 +144,7 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                                                 cell.type === 'finish' && 'bg-gray-200',
                                                 cell.type === 'empty' && 'bg-white'
                                             )}
+                                            style={{ minWidth: 0, minHeight: 0 }}
                                         >
                                             <span className="absolute inset-0 flex items-center justify-center text-[8px] opacity-10 select-none pointer-events-none font-bold">
                                                 {trackIndex !== -1 && `P${trackIndex + 1}`}
@@ -151,7 +152,7 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                                                 {baseColor && `${baseColor.charAt(0).toUpperCase()}B`}
                                             </span>
 
-                                            <div className="flex flex-wrap gap-0.5 items-center justify-center p-0.5">
+                                            <div className="absolute inset-0 flex flex-wrap gap-0.5 items-center justify-center p-0.5 pointer-events-none">
                                                 {cellPieces.map((p) => {
                                                     const canMovePiece = diceValue !== null && (
                                                         (p.position === -1 && diceValue === 6) ||
@@ -163,9 +164,9 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                                                         <button
                                                             key={p.id}
                                                             onClick={() => movePiece(p.id)}
-                                                            disabled={p.color !== currentTurn || diceValue === null || !canMovePiece}
+                                                            disabled={p.color !== currentTurn || diceValue === null || !canMovePiece || gameState.isAnimating}
                                                             className={cn(
-                                                                "w-4 h-4 sm:w-5 sm:h-5 border-2 border-black rounded-full shadow-sm z-10 transition-transform",
+                                                                "w-4 h-4 sm:w-5 sm:h-5 border-2 border-black rounded-full shadow-sm z-10 transition-all duration-300 pointer-events-auto",
                                                                 COLOR_MAP[p.color],
                                                                 p.color === currentTurn && diceValue !== null && canMovePiece && "ring-2 ring-white scale-125 z-20 animate-pulse",
                                                                 (p.color !== currentTurn || !canMovePiece) && "opacity-50 cursor-not-allowed"
@@ -188,7 +189,7 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                          <div className="flex-1">
                             <button 
                                 onClick={rollDice} 
-                                disabled={diceValue !== null || isRolling || !canInteract}
+                                disabled={diceValue !== null || isRolling || !canInteract || gameState.isAnimating}
                                 className={cn(
                                     "w-full py-4 font-black transition-all active:scale-95 disabled:opacity-50 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
                                     COLOR_MAP[currentTurn],

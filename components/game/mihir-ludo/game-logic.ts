@@ -6,12 +6,12 @@ import { START_INDICES } from './board-constants';
 
 const COLORS: PlayerColor[] = ['red', 'green', 'yellow', 'blue'];
 
-const createInitialPieces = (playerCount: number): Piece[] => {
+export const createInitialPieces = (playerCount: number): Piece[] => {
   const pieces: Piece[] = [];
   const activeColors = COLORS.slice(0, playerCount);
   // For 2 players, use Red and Yellow for better balance (opposite sides)
   const finalColors: PlayerColor[] = playerCount === 2 ? ['red', 'yellow'] : activeColors;
-  
+
   finalColors.forEach((color) => {
     for (let i = 0; i < 4; i++) {
       pieces.push({
@@ -24,6 +24,160 @@ const createInitialPieces = (playerCount: number): Piece[] => {
   return pieces;
 };
 
+export const getActiveColors = (count: number): PlayerColor[] => {
+  if (count === 2) return ['red', 'yellow'];
+  return COLORS.slice(0, count);
+};
+
+export const getNextTurn = (
+  currentColor: PlayerColor,
+  diceValue: number | null,
+  pieces: Piece[],
+  count: number,
+  forceNext: boolean = false
+): PlayerColor => {
+  if (diceValue === 6 && !forceNext) return currentColor;
+
+  const activeColors = getActiveColors(count);
+  const currentIndex = activeColors.indexOf(currentColor);
+
+  for (let i = 1; i < activeColors.length; i++) {
+    const nextIndex = (currentIndex + i) % activeColors.length;
+    const nextColor = activeColors[nextIndex];
+    const playerPieces = pieces.filter(p => p.color === nextColor);
+    const isFinished = playerPieces.every(p => p.position === 57);
+    if (!isFinished) return nextColor;
+  }
+  return currentColor;
+};
+
+// Pure logic for rolling dice
+export const performRoll = (state: GameState, forcedRoll?: number): GameState => {
+  const playerPieces = state.pieces.filter(p => p.color === state.currentTurn);
+  const allAtHome = playerPieces.every(p => p.position === -1);
+  const currentPity = state.pityCounters[state.currentTurn];
+
+  let roll: number;
+  if (forcedRoll !== undefined) {
+    roll = forcedRoll;
+  } else if (allAtHome && currentPity >= 10) {
+    roll = 6;
+  } else {
+    roll = Math.floor(Math.random() * 6) + 1;
+  }
+
+  const newPityCounters = { ...state.pityCounters };
+  if (roll === 6) {
+    newPityCounters[state.currentTurn] = 0;
+  } else if (allAtHome) {
+    newPityCounters[state.currentTurn] += 1;
+  }
+
+  const canMove = playerPieces.length > 0 && playerPieces.some(p => {
+    if (p.position === -1) return roll === 6;
+    if (p.position >= 52) return p.position + roll <= 57;
+    return true;
+  });
+
+  if (!canMove) {
+    const nextTurn = getNextTurn(state.currentTurn, roll, state.pieces, state.playerCount, true);
+    return {
+      ...state,
+      diceValue: roll,
+      isRolling: false,
+      pityCounters: newPityCounters,
+      // We'll handle the delay for turn change in the hook or online manager
+      _pendingTurn: nextTurn 
+    };
+  }
+
+  return {
+    ...state,
+    diceValue: roll,
+    isRolling: false,
+    pityCounters: newPityCounters
+  };
+};
+
+export const getMovePath = (startPos: number, color: PlayerColor, steps: number): number[] => {
+  const path: number[] = [];
+  const startIdx = START_INDICES[color];
+  const preHomeIdx = (startIdx + 51) % 52;
+
+  if (startPos === -1) {
+    if (steps === 6) return [startIdx];
+    return [];
+  }
+
+  let current = startPos;
+  for (let i = 0; i < steps; i++) {
+    if (current >= 0 && current <= 51) {
+      if (current === preHomeIdx) {
+        current = 52;
+      } else {
+        current = (current + 1) % 52;
+      }
+    } else if (current >= 52) {
+      if (current < 57) {
+        current++;
+      } else {
+        break; // Already at home
+      }
+    }
+    path.push(current);
+  }
+  return path;
+};
+
+// Pure logic for moving a piece
+export const performMove = (state: GameState, pieceId: string): GameState => {
+  const { currentTurn, diceValue, pieces, playerCount, winners, gameStarted } = state;
+  if (diceValue === null || !gameStarted) return state;
+
+  const piece = pieces.find((p) => p.id === pieceId);
+  if (!piece || piece.color !== currentTurn) return state;
+
+  const path = getMovePath(piece.position, currentTurn, diceValue);
+  if (path.length === 0) return state;
+  
+  const nextPos = path[path.length - 1];
+
+  let newPieces = [...pieces];
+  let extraTurn = false;
+
+  if (nextPos >= 0 && nextPos <= 51) {
+    const IS_SAFE = [0, 8, 13, 21, 26, 34, 39, 47].some(idx => idx === nextPos);
+    if (!IS_SAFE) {
+      const victimIdx = newPieces.findIndex(p => p.position === nextPos && p.color !== currentTurn);
+      if (victimIdx !== -1) {
+        newPieces[victimIdx] = { ...newPieces[victimIdx], position: -1 };
+        extraTurn = true;
+      }
+    }
+  }
+
+  newPieces = newPieces.map(p => p.id === pieceId ? { ...p, position: nextPos } : p);
+  if (nextPos === 57) extraTurn = true;
+
+  const isFinished = newPieces.filter(p => p.color === currentTurn).every(p => p.position === 57);
+  let newWinners = winners;
+  if (isFinished && !winners.includes(currentTurn)) {
+    newWinners = [...winners, currentTurn];
+  }
+
+  const nextTurn = (extraTurn || diceValue === 6)
+    ? currentTurn
+    : getNextTurn(currentTurn, diceValue, newPieces, playerCount);
+
+  return {
+    ...state,
+    pieces: newPieces,
+    diceValue: null,
+    winners: newWinners,
+    currentTurn: nextTurn,
+  };
+};
+
 export const useLudoLogic = () => {
   const [gameState, setGameState] = useState<GameState>({
     pieces: createInitialPieces(4),
@@ -34,34 +188,8 @@ export const useLudoLogic = () => {
     playerCount: 4,
     gameStarted: false,
     pityCounters: { red: 0, green: 0, yellow: 0, blue: 0 },
+    isAnimating: false,
   });
-
-  const getActiveColors = (count: number): PlayerColor[] => {
-    if (count === 2) return ['red', 'yellow'];
-    return COLORS.slice(0, count);
-  };
-
-  const getNextTurn = (
-    currentColor: PlayerColor, 
-    diceValue: number | null, 
-    pieces: Piece[], 
-    count: number, 
-    forceNext: boolean = false
-  ): PlayerColor => {
-    if (diceValue === 6 && !forceNext) return currentColor;
-    
-    const activeColors = getActiveColors(count);
-    const currentIndex = activeColors.indexOf(currentColor);
-    
-    for (let i = 1; i < activeColors.length; i++) {
-      const nextIndex = (currentIndex + i) % activeColors.length;
-      const nextColor = activeColors[nextIndex];
-      const playerPieces = pieces.filter(p => p.color === nextColor);
-      const isFinished = playerPieces.every(p => p.position === 57);
-      if (!isFinished) return nextColor;
-    }
-    return currentColor; 
-  };
 
   const startGame = (count: number) => {
     const players = getActiveColors(count);
@@ -74,6 +202,7 @@ export const useLudoLogic = () => {
       playerCount: count,
       gameStarted: true,
       pityCounters: { red: 0, green: 0, yellow: 0, blue: 0 },
+      isAnimating: false,
     });
   };
 
@@ -84,143 +213,71 @@ export const useLudoLogic = () => {
 
     setTimeout(() => {
       setGameState((prev) => {
-        const playerPieces = prev.pieces.filter(p => p.color === prev.currentTurn);
-        const allAtHome = playerPieces.every(p => p.position === -1);
-        const currentPity = prev.pityCounters[prev.currentTurn];
+        const nextState = performRoll(prev);
         
-        // Pity threshold set to 10 non-6 rolls while stuck at home
-        let roll: number;
-        if (allAtHome && currentPity >= 10) {
-          roll = 6;
-        } else {
-          roll = Math.floor(Math.random() * 6) + 1;
-        }
-
-        const newPityCounters = { ...prev.pityCounters };
-        if (roll === 6) {
-          newPityCounters[prev.currentTurn] = 0;
-        } else if (allAtHome) {
-          newPityCounters[prev.currentTurn] += 1;
-        }
-
-        const canMove = playerPieces.length > 0 && playerPieces.some(p => {
-          if (p.position === -1) return roll === 6;
-          if (p.position >= 52) return p.position + roll <= 57;
-          return true;
-        });
-
-        if (!canMove) {
-          // AUTO PASS - Delay turn change until dice is cleared
-          const nextTurn = getNextTurn(prev.currentTurn, roll, prev.pieces, prev.playerCount, true);
+        if (nextState._pendingTurn) {
+          const finalTurn = nextState._pendingTurn;
+          delete nextState._pendingTurn;
           
           setTimeout(() => {
-            setGameState(st => {
-              // Ensure we only clear if turn hasn't changed manually
-              if (st.currentTurn === prev.currentTurn && st.diceValue === roll) {
-                return { 
-                  ...st, 
-                  diceValue: null, 
-                  currentTurn: nextTurn 
-                };
-              }
-              return st;
-            });
+            setGameState(st => ({
+              ...st,
+              diceValue: null,
+              currentTurn: finalTurn
+            }));
           }, 1000);
-
-          return { 
-            ...prev, 
-            diceValue: roll, 
-            isRolling: false, 
-            pityCounters: newPityCounters
-          };
         }
 
-        return { 
-          ...prev, 
-          diceValue: roll, 
-          isRolling: false,
-          pityCounters: newPityCounters
-        };
+        return nextState;
       });
     }, 600);
   }, [gameState.isRolling, gameState.diceValue, gameState.gameStarted, gameState.currentTurn]);
 
   const movePiece = useCallback((pieceId: string) => {
     setGameState((prev) => {
-      const { currentTurn, diceValue, pieces, playerCount, winners, gameStarted } = prev;
-      if (diceValue === null || !gameStarted) return prev;
+      const piece = prev.pieces.find(p => p.id === pieceId);
+      if (!piece || prev.diceValue === null || prev.isAnimating) return prev;
 
-      const piece = pieces.find((p) => p.id === pieceId);
-      if (!piece || piece.color !== currentTurn) return prev;
+      const path = getMovePath(piece.position, prev.currentTurn, prev.diceValue);
+      if (path.length === 0) return prev;
 
-      let nextPos = piece.position;
-      const startIdx = START_INDICES[currentTurn];
-      const preHomeIdx = (startIdx + 51) % 52;
-
-      if (piece.position === -1) {
-        if (diceValue === 6) nextPos = startIdx;
-        else return prev;
-      } else if (piece.position >= 0 && piece.position <= 51) {
-        const stepsToPreHome = (preHomeIdx - piece.position + 52) % 52;
-        if (diceValue > stepsToPreHome) {
-          const remainingSteps = diceValue - stepsToPreHome - 1;
-          nextPos = 52 + remainingSteps;
-        } else {
-          nextPos = (piece.position + diceValue) % 52;
+      // Start animation
+      let currentStep = 0;
+      const animate = () => {
+        if (currentStep >= path.length) {
+          // Finalize move
+          setGameState(st => {
+            const finalState = performMove({ ...st, isAnimating: false }, pieceId);
+            return finalState;
+          });
+          return;
         }
-      } else if (piece.position >= 52) {
-        if (piece.position + diceValue <= 57) nextPos = piece.position + diceValue;
-        else return prev;
-      }
 
-      if (nextPos === piece.position && piece.position !== -1) return prev;
+        const nextPos = path[currentStep];
+        setGameState(st => ({
+          ...st,
+          isAnimating: true,
+          pieces: st.pieces.map(p => p.id === pieceId ? { ...p, position: nextPos } : p)
+        }));
 
-      let newPieces = [...pieces];
-      let extraTurn = false;
-
-      if (nextPos >= 0 && nextPos <= 51) {
-        const IS_SAFE = [0, 8, 13, 21, 26, 34, 39, 47].some(idx => idx === nextPos);
-        if (!IS_SAFE) {
-          const victimIdx = newPieces.findIndex(p => p.position === nextPos && p.color !== currentTurn);
-          if (victimIdx !== -1) {
-            newPieces[victimIdx] = { ...newPieces[victimIdx], position: -1 };
-            extraTurn = true;
-          }
-        }
-      }
-
-      newPieces = newPieces.map(p => p.id === pieceId ? { ...p, position: nextPos } : p);
-      if (nextPos === 57) extraTurn = true;
-
-      const isFinished = newPieces.filter(p => p.color === currentTurn).every(p => p.position === 57);
-      let newWinners = winners;
-      if (isFinished && !winners.includes(currentTurn)) {
-        newWinners = [...winners, currentTurn];
-      }
-
-      const nextTurn = (extraTurn || diceValue === 6) 
-        ? currentTurn 
-        : getNextTurn(currentTurn, diceValue, newPieces, playerCount);
-      
-      return {
-        ...prev,
-        pieces: newPieces,
-        diceValue: null,
-        winners: newWinners,
-        currentTurn: nextTurn,
+        currentStep++;
+        setTimeout(animate, 250);
       };
+
+      // We need to return an intermediate state that starts the animation
+      // or just call animate() and return the current state with isAnimating: true
+      setTimeout(animate, 0);
+      return { ...prev, isAnimating: true };
     });
   }, []);
 
   // Auto-move logic
   useEffect(() => {
     const { diceValue, isRolling, pieces, currentTurn, gameStarted } = gameState;
-    
+
     if (gameStarted && diceValue !== null && !isRolling) {
-      const movablePieces = pieces.filter(p => {
-        if (p.color !== currentTurn) return false;
-        
-        // Piece movement rules
+      const playerPieces = pieces.filter(p => p.color === currentTurn);
+      const movablePieces = playerPieces.filter(p => {
         if (p.position === -1) return diceValue === 6;
         if (p.position >= 52) return p.position + diceValue <= 57;
         return true;
@@ -242,3 +299,4 @@ export const useLudoLogic = () => {
     startGame,
   };
 };
+

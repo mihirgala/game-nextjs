@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAtom } from 'jotai';
 import { socketAtom } from '@/lib/atoms';
 import { authClient } from '@/lib/auth-client';
 import { Lobby } from './lobby';
 import { Board } from './board';
 import { toast } from 'sonner';
-import { GameState, PlayerColor } from './types';
+import { GameState, PlayerColor, Piece } from './types';
+import { performRoll, performMove, createInitialPieces, getMovePath } from './game-logic';
 
 interface OnlineGameProps {
     roomId: string;
@@ -27,20 +28,26 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
         setIsValidating(true);
 
         socket.emit("room:validate", { roomId, allowCreate: true }, (res: any) => {
+            console.log("Room validation response:", res);
             setIsValidating(false);
             if (!res.valid) {
                 toast.error(res.error || "Room is invalid.");
                 return;
             }
 
-            socket.emit("game:join", { 
-                roomId, 
-                game: "ludo", 
-                userImage: user.image 
+            console.log("Emitting game:join for room:", roomId);
+            socket.emit("game:join", {
+                roomId,
+                game: "ludoMihir",
+                userImage: user.image
             });
         });
 
         const handleState = (state: any) => {
+            console.log("Received game state:", state);
+            if (state.pieces) {
+                console.log(`  Piece count in received state: ${state.pieces.length}`);
+            }
             setRemoteRoom(state);
         };
 
@@ -51,38 +58,193 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
         };
     }, [socket, roomId, user?.id]);
 
-    if (isValidating) {
-        return <div className="flex items-center justify-center min-h-screen font-black uppercase italic">Validating Arena...</div>;
-    }
+    const mappedGameState = useCallback((room: any): GameState => {
+        if (!room) return {} as GameState;
+        return {
+            pieces: room.pieces || [],
+            currentTurn: (room.players && room.players[room.turnIndex || 0]?.color) as PlayerColor || 'red',
+            diceValue: room.diceValue ?? null,
+            isRolling: room.isRolling || false,
+            winners: room.winners || [],
+            playerCount: room.players?.length || 0,
+            gameStarted: room.status === 'playing',
+            pityCounters: room.pityCounters || { red: 0, green: 0, yellow: 0, blue: 0 },
+            isAnimating: room.isAnimating || false
+        };
+    }, []);
 
-    if (!remoteRoom) {
-        return <div className="flex items-center justify-center min-h-screen font-black uppercase italic">Connecting...</div>;
-    }
+    const gameState = mappedGameState(remoteRoom);
+    const isHost = remoteRoom?.players && remoteRoom.players[0]?.userId === user?.id;
+    const myPlayer = remoteRoom?.players?.find((p: any) => p.userId === user?.id);
+    const myColor = myPlayer?.color as PlayerColor;
+    const isMyTurn = gameState.currentTurn === myColor;
 
-    // Map backend state to frontend Board expectations
-    const isHost = remoteRoom.players[0].userId === user?.id;
-    const status = remoteRoom.status || 'waiting';
+    const syncState = useCallback((newState: Partial<GameState> & { status?: string, turnIndex?: number }) => {
+        if (!socket || !roomId) return;
+        console.log("Syncing state:", newState);
+        socket.emit("game:update", { roomId, state: newState });
+    }, [socket, roomId]);
 
     const rollDice = () => {
-        if (!socket) return;
-        socket.emit("game:ludo:roll", { roomId });
+        if (!isMyTurn || gameState.diceValue !== null || gameState.isRolling) return;
+
+        syncState({ isRolling: true, diceValue: null });
+
+        setTimeout(() => {
+            const nextState = performRoll(gameState);
+
+            if (nextState._pendingTurn) {
+                const finalTurnColor = nextState._pendingTurn;
+                delete nextState._pendingTurn;
+                syncState(nextState);
+
+                setTimeout(() => {
+                    syncState({
+                        diceValue: null,
+                        turnIndex: remoteRoom.players.findIndex((p: any) => p.color === finalTurnColor)
+                    });
+                }, 1000);
+            } else {
+                syncState(nextState);
+            }
+        }, 600);
     };
 
     const movePiece = (pieceId: string) => {
-        if (!socket) return;
-        // pieceId in frontend is "color-index", backend expects numeric index (0-3)
-        const index = parseInt(pieceId.split('-')[1]);
-        socket.emit("game:ludo:move", { roomId, pieceId: index });
+        if (!isMyTurn || gameState.diceValue === null || gameState.isAnimating) return;
+
+        const piece = gameState.pieces.find(p => p.id === pieceId);
+        if (!piece) return;
+
+        const path = getMovePath(piece.position, gameState.currentTurn, gameState.diceValue);
+        if (path.length === 0) return;
+
+        // Start animation sequence
+        let currentStep = 0;
+        const animate = () => {
+            if (currentStep >= path.length) {
+                const nextState = performMove(gameState, pieceId);
+                const nextTurnIndex = remoteRoom.players.findIndex((p: any) => p.color === nextState.currentTurn);
+
+                syncState({
+                    pieces: nextState.pieces,
+                    diceValue: null,
+                    winners: nextState.winners,
+                    turnIndex: nextTurnIndex,
+                    isAnimating: false
+                });
+                return;
+            }
+
+            const nextPos = path[currentStep];
+            syncState({
+                isAnimating: true,
+                pieces: gameState.pieces.map(p => p.id === pieceId ? { ...p, position: nextPos } : p)
+            });
+
+            currentStep++;
+            setTimeout(animate, 250);
+        };
+
+        animate();
     };
 
     const startGame = () => {
-        if (!socket || !isHost) return;
-        socket.emit("game:start", { roomId });
+        if (!socket || !isHost || !remoteRoom) return;
+
+        const initialPieces = createInitialPieces(remoteRoom.players.length);
+        console.log("Host initializing game with", initialPieces.length, "pieces");
+        syncState({
+            status: 'playing',
+            pieces: initialPieces,
+            pityCounters: { red: 0, green: 0, yellow: 0, blue: 0 },
+            diceValue: null,
+            isRolling: false,
+            winners: [],
+            turnIndex: 0
+        });
     };
 
-    if (status === 'waiting') {
+    // Bot Logic (Run by host)
+    useEffect(() => {
+        if (!isHost || !remoteRoom || remoteRoom.status !== 'playing' || remoteRoom.isGameOver) return;
+
+        const currentPlayer = remoteRoom.players[remoteRoom.turnIndex];
+        if (!currentPlayer || !currentPlayer.isBot) return;
+
+        const timer = setTimeout(() => {
+            if (remoteRoom.diceValue === null && !remoteRoom.isRolling) {
+                const nextState = performRoll(gameState);
+
+                if (nextState._pendingTurn) {
+                    const finalTurnColor = nextState._pendingTurn;
+                    delete nextState._pendingTurn;
+                    syncState(nextState);
+                    setTimeout(() => {
+                        syncState({
+                            diceValue: null,
+                            turnIndex: remoteRoom.players.findIndex((p: any) => p.color === finalTurnColor)
+                        });
+                    }, 1000);
+                } else {
+                    syncState(nextState);
+                }
+            } else if (remoteRoom.diceValue !== null && !remoteRoom.isRolling) {
+                const playerPieces = gameState.pieces.filter(p => p.color === gameState.currentTurn);
+                const movablePieces = playerPieces.filter(p => {
+                    if (p.position === -1) return gameState.diceValue === 6;
+                    if (p.position >= 52) return p.position + gameState.diceValue! <= 57;
+                    return true;
+                });
+
+                if (movablePieces.length > 0) {
+                    const pieceToMove = movablePieces.find(p => p.position === -1) || movablePieces.sort((a, b) => b.position - a.position)[0];
+                    const nextState = performMove(gameState, pieceToMove.id);
+                    const nextTurnIndex = remoteRoom.players.findIndex((p: any) => p.color === nextState.currentTurn);
+
+                    syncState({
+                        pieces: nextState.pieces,
+                        diceValue: null,
+                        winners: nextState.winners,
+                        turnIndex: nextTurnIndex
+                    });
+                }
+            }
+        }, 1500);
+
+        return () => clearTimeout(timer);
+    }, [isHost, remoteRoom?.turnIndex, remoteRoom?.diceValue, remoteRoom?.isRolling, gameState, syncState]);
+
+    // Auto-move for local player
+    useEffect(() => {
+        if (!isMyTurn || !remoteRoom || remoteRoom.diceValue === null || remoteRoom.isRolling) return;
+
+        const playerPieces = gameState.pieces.filter(p => p.color === gameState.currentTurn);
+        const movablePieces = playerPieces.filter(p => {
+            if (p.position === -1) return gameState.diceValue === 6;
+            if (p.position >= 52) return p.position + gameState.diceValue! <= 57;
+            return true;
+        });
+
+        if (movablePieces.length === 1) {
+            const timer = setTimeout(() => {
+                movePiece(movablePieces[0].id);
+            }, 600);
+            return () => clearTimeout(timer);
+        }
+    }, [isMyTurn, remoteRoom?.diceValue, remoteRoom?.isRolling, gameState, movePiece]);
+
+    if (isValidating) {
+        return <div className="flex items-center justify-center min-h-screen font-black uppercase italic text-3xl animate-pulse">Validating Arena...</div>;
+    }
+
+    if (!remoteRoom) {
+        return <div className="flex items-center justify-center min-h-screen font-black uppercase italic text-3xl">Connecting...</div>;
+    }
+
+    if (remoteRoom.status === 'waiting') {
         return (
-            <Lobby 
+            <Lobby
                 roomId={roomId}
                 players={remoteRoom.players}
                 isHost={isHost}
@@ -91,42 +253,13 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
         );
     }
 
-    // Adapt remoteRoom to GameState
-    // Backend players have pieces. We need a flattened array of pieces.
-    const allPieces: any[] = [];
-    remoteRoom.players.forEach((p: any) => {
-        p.pieces?.forEach((pc: any) => {
-            allPieces.push({
-                id: `${p.color}-${pc.id}`,
-                color: p.color,
-                position: pc.position,
-            });
-        });
-    });
-
-    const currentTurn = remoteRoom.players[remoteRoom.turnIndex].color;
-
-    const mappedGameState: GameState = {
-        pieces: allPieces,
-        currentTurn: currentTurn as PlayerColor,
-        diceValue: remoteRoom.diceValue,
-        isRolling: false, // The backend doesn't show rolling state in real-time easily, but we can set it to false when we get state
-        winners: remoteRoom.winnerId ? [remoteRoom.players.find((p: any) => p.userId === remoteRoom.winnerId)?.color as PlayerColor] : [],
-        playerCount: remoteRoom.players.length,
-        gameStarted: true,
-        status: remoteRoom.status,
-        pityCounters: remoteRoom.pityCounters || { red: 0, green: 0, yellow: 0, blue: 0 }
-    };
-
-    const myColor = remoteRoom.players.find((p: any) => p.userId === user?.id)?.color;
-
     return (
-        <Board 
-            gameState={mappedGameState}
+        <Board
+            gameState={gameState}
             rollDice={rollDice}
             movePiece={movePiece}
-            startGame={() => {}} // Not used in online mode board
-            canInteract={currentTurn === myColor}
+            startGame={startGame}
+            canInteract={isMyTurn}
         />
     );
 };

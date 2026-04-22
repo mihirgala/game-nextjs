@@ -16,4 +16,9 @@ export interface GameState {
   gameStarted: boolean;
   status?: 'waiting' | 'playing' | 'finished';
   pityCounters: Record<PlayerColor, number>;
+  _pendingTurn?: PlayerColor;
+  turnIndex?: number;
+  isGameOver?: boolean;
+  winnerId?: string | null;
+  isAnimating?: boolean;
 }
