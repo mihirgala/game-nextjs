@@ -13,14 +13,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  Trophy, 
-  Users, 
-  MessageSquare, 
-  RefreshCw, 
-  ArrowLeft, 
-  Send, 
-  Bot, 
+import {
+  Trophy,
+  Users,
+  MessageSquare,
+  RefreshCw,
+  ArrowLeft,
+  Send,
+  Bot,
   Gamepad2,
   AlertCircle,
   Copy,
@@ -40,6 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 // --- Types ---
 interface GameState {
@@ -86,10 +87,10 @@ function TicTacToeContent() {
   const inviteFriend = (friendId: string, name: string) => {
     if (!socket) return;
     const newRoomId = nanoid(10);
-    socket.emit("game:invite", { 
-      fromId: user!.id, 
-      fromName: user!.name!, 
-      toId: friendId, 
+    socket.emit("game:invite", {
+      fromId: user!.id,
+      fromName: user!.name!,
+      toId: friendId,
       game: "tictactoe",
       roomId: newRoomId
     });
@@ -109,7 +110,7 @@ function TicTacToeContent() {
       setValidationError(null);
       lastInitializedRoomRef.current = roomId;
     }
-    
+
     setIsValidating(true);
 
     const isBot = searchParams.get("isBot") === "true";
@@ -123,12 +124,12 @@ function TicTacToeContent() {
         return;
       }
 
-      socket.emit("game:join", { 
-        roomId, 
-        game: "tictactoe", 
-        isBot, 
-        difficulty, 
-        userImage: user.image 
+      socket.emit("game:join", {
+        roomId,
+        game: "tictactoe",
+        isBot,
+        difficulty,
+        userImage: user.image
       });
     });
 
@@ -190,7 +191,7 @@ function TicTacToeContent() {
     if (mode === "bot" && difficulty) {
       router.push(`/game/tictactoe?roomId=${newRoomId}&isBot=true&difficulty=${difficulty}&create=true`);
     } else if (mode === "local") {
-        router.push(`/game/tictactoe?local=true`);
+      router.push(`/game/tictactoe?local=true`);
     } else {
       router.push(`/game/tictactoe?roomId=${newRoomId}&create=true`);
     }
@@ -199,11 +200,11 @@ function TicTacToeContent() {
   if (!user) return null;
 
   if (isLocal) {
-      return (
-          <div className="p-8 max-w-4xl mx-auto">
-              <LocalTicTacToe />
-          </div>
-      );
+    return (
+      <div className="p-8 max-w-4xl mx-auto">
+        <LocalTicTacToe />
+      </div>
+    );
   }
 
   if (!roomId) {
@@ -232,9 +233,9 @@ function TicTacToeContent() {
               <CardDescription className="font-bold uppercase text-[10px] tracking-widest opacity-60">One Screen</CardDescription>
             </CardHeader>
             <CardContent>
-               <Button onClick={() => selectMode("local")} className="w-full h-14 font-black text-base shadow-lg shadow-orange-500/10" variant="secondary">
-                 PLAY LOCALLY
-               </Button>
+              <Button onClick={() => selectMode("local")} className="w-full h-14 font-black text-base shadow-lg shadow-orange-500/10" variant="secondary">
+                PLAY LOCALLY
+              </Button>
             </CardContent>
           </Card>
 
@@ -248,16 +249,16 @@ function TicTacToeContent() {
               <CardDescription className="font-bold uppercase text-[10px] tracking-widest opacity-60">Vs Neural Net</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-                <Button onClick={() => selectMode("bot", "easy")} variant="outline" className="w-full justify-between h-12 font-bold group/btn">
-                  <span>EASY</span>
-                  <Badge variant="secondary" className="opacity-0 group-hover/btn:opacity-100 transition-opacity">BOT</Badge>
-                </Button>
-                <Button onClick={() => selectMode("bot", "medium")} variant="outline" className="w-full justify-between h-12 font-bold group/btn">
-                  <span>PRO</span>
-                </Button>
-                <Button onClick={() => selectMode("bot", "hard")} className="w-full h-12 font-black shadow-lg shadow-primary/10">
-                  GRANDMASTER
-                </Button>
+              <Button onClick={() => selectMode("bot", "easy")} variant="outline" className="w-full justify-between h-12 font-bold group/btn">
+                <span>EASY</span>
+                <Badge variant="secondary" className="opacity-0 group-hover/btn:opacity-100 transition-opacity">BOT</Badge>
+              </Button>
+              <Button onClick={() => selectMode("bot", "medium")} variant="outline" className="w-full justify-between h-12 font-bold group/btn">
+                <span>PRO</span>
+              </Button>
+              <Button onClick={() => selectMode("bot", "hard")} className="w-full h-12 font-black shadow-lg shadow-primary/10">
+                GRANDMASTER
+              </Button>
             </CardContent>
           </Card>
 
@@ -272,8 +273,8 @@ function TicTacToeContent() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex gap-2">
-                <Input 
-                  placeholder="ROOM CODE" 
+                <Input
+                  placeholder="ROOM CODE"
                   className="h-12 bg-muted/50 font-black tracking-[0.2em] text-center text-xs"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -285,25 +286,25 @@ function TicTacToeContent() {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                 <Button onClick={() => setIsInviteModalOpen(true)} variant="secondary" className="h-12 font-bold text-[10px] uppercase">
-                   INVITE
-                 </Button>
-                 <Button onClick={() => {
-                    const id = nanoid(10).toUpperCase();
-                    if (socket) {
-                      const inviteMsg = {
-                        senderId: user.id,
-                        senderName: user.name ?? "Unknown",
-                        text: `🎮 Join my Tic Tac Toe arena! ⚔️`,
-                        createdAt: new Date().toISOString(),
-                        invite: { game: "tictactoe", roomId: id }
-                      };
-                      socket.emit("lobby:broadcast", inviteMsg);
-                      router.push(`/game/tictactoe?roomId=${id}&create=true`);
-                    }
-                  }} variant="outline" className="h-12 font-bold text-[10px] uppercase border-primary/20">
-                   BROADCAST
-                 </Button>
+                <Button onClick={() => setIsInviteModalOpen(true)} variant="secondary" className="h-12 font-bold text-[10px] uppercase">
+                  INVITE
+                </Button>
+                <Button onClick={() => {
+                  const id = nanoid(10).toUpperCase();
+                  if (socket) {
+                    const inviteMsg = {
+                      senderId: user.id,
+                      senderName: user.name ?? "Unknown",
+                      text: `🎮 Join my Tic Tac Toe arena! ⚔️`,
+                      createdAt: new Date().toISOString(),
+                      invite: { game: "tictactoe", roomId: id }
+                    };
+                    socket.emit("lobby:broadcast", inviteMsg);
+                    router.push(`/game/tictactoe?roomId=${id}&create=true`);
+                  }
+                }} variant="outline" className="h-12 font-bold text-[10px] uppercase border-primary/20">
+                  BROADCAST
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -339,9 +340,9 @@ function TicTacToeContent() {
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">{f.friend.isOnline ? "Online" : "Offline"}</span>
                       </div>
                     </div>
-                    <Button 
-                      size="sm" 
-                      className="h-8 font-black uppercase text-[10px]" 
+                    <Button
+                      size="sm"
+                      className="h-8 font-black uppercase text-[10px]"
                       disabled={!f.friend.isOnline}
                       onClick={() => inviteFriend(f.friend.id, f.friend.name)}
                     >
@@ -363,19 +364,19 @@ function TicTacToeContent() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 animate-in fade-in duration-500">
         <div className={`w-20 h-20 rounded-full border-4 border-dashed ${validationError ? "border-destructive animate-none" : "border-primary animate-spin"}`} />
         <div className="space-y-2 text-center max-w-sm">
-           <h2 className="text-2xl font-black uppercase tracking-tighter">
-             {isValidating ? "Validating" : "Entry Denied"}
-           </h2>
-           <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">
-             {isValidating 
-               ? "STABILIZING REALITY..." 
-               : validationError}
-           </p>
-           {validationError && (
-             <Button onClick={() => router.push("/game/tictactoe")} className="mt-4 font-black uppercase" variant="outline">
-               <ArrowLeft className="w-4 h-4 mr-2" /> Return to Lobby
-             </Button>
-           )}
+          <h2 className="text-2xl font-black uppercase tracking-tighter">
+            {isValidating ? "Validating" : "Entry Denied"}
+          </h2>
+          <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">
+            {isValidating
+              ? "STABILIZING REALITY..."
+              : validationError}
+          </p>
+          {validationError && (
+            <Button onClick={() => router.push("/game/tictactoe")} className="mt-4 font-black uppercase" variant="outline">
+              <ArrowLeft className="w-4 h-4 mr-2" /> Return to Lobby
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -386,8 +387,8 @@ function TicTacToeContent() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 animate-pulse">
         <div className="w-20 h-20 rounded-full border-4 border-dashed border-primary animate-spin" />
         <div className="space-y-2 text-center">
-           <h2 className="text-2xl font-black uppercase tracking-tighter">Initializing Arena</h2>
-           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Connecting to server</p>
+          <h2 className="text-2xl font-black uppercase tracking-tighter">Initializing Arena</h2>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Connecting to server</p>
         </div>
       </div>
     );
@@ -411,7 +412,7 @@ function TicTacToeContent() {
             ROOM: {roomId}
           </Badge>
           <Button size="icon" variant="outline" className="h-9 w-9 rounded-xl border-primary/20" onClick={copyLink}>
-             {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+            {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
           </Button>
         </div>
       </div>
@@ -424,11 +425,11 @@ function TicTacToeContent() {
             <Card className={`relative overflow-hidden border-2 transition-all duration-500 ${isMyTurn ? "border-primary shadow-2xl shadow-primary/10" : "border-border/50 opacity-40 scale-95"}`}>
               <CardContent className="p-6 flex items-center gap-4">
                 <div className="relative">
-                    <Avatar className="h-12 w-12 border-2 border-primary/20 shadow-sm">
-                        <AvatarImage src={user.image ?? ""} />
-                        <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
-                    </Avatar>
-                    {isMyTurn && <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-ping" />}
+                  <Avatar className="h-12 w-12 border-2 border-primary/20 shadow-sm">
+                    <AvatarImage src={user.image ?? ""} />
+                    <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
+                  </Avatar>
+                  {isMyTurn && <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-ping" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -441,92 +442,92 @@ function TicTacToeContent() {
             </Card>
 
             <Card className={`relative overflow-hidden border-2 transition-all duration-500 ${!isMyTurn && gameFull && !gameState?.isGameOver ? "border-emerald-500 shadow-2xl shadow-emerald-500/10" : "border-border/50 opacity-40 scale-95"}`}>
-               <CardContent className="p-6 flex items-center gap-4">
+              <CardContent className="p-6 flex items-center gap-4">
                 <div className="relative">
-                    <Avatar className="h-12 w-12 border-2 border-emerald-500/20 shadow-sm">
+                  <Avatar className="h-12 w-12 border-2 border-emerald-500/20 shadow-sm">
                     {gameState?.isBotMatch ? (
-                        <AvatarFallback className="bg-muted text-foreground"><Bot className="w-6 h-6" /></AvatarFallback>
+                      <AvatarFallback className="bg-muted text-foreground"><Bot className="w-6 h-6" /></AvatarFallback>
                     ) : (
-                        <>
+                      <>
                         <AvatarImage src={opponent?.image ?? ""} />
                         <AvatarFallback>{opponent?.name?.charAt(0) || "U"}</AvatarFallback>
-                        </>
+                      </>
                     )}
-                    </Avatar>
-                    {!isMyTurn && gameFull && !gameState?.isGameOver && <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full animate-ping" />}
+                  </Avatar>
+                  {!isMyTurn && gameFull && !gameState?.isGameOver && <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full animate-ping" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-black truncate text-sm uppercase">
-                      {gameState?.isBotMatch 
-                        ? `AI (${gameState.difficulty?.toUpperCase()})` 
+                      {gameState?.isBotMatch
+                        ? `AI (${gameState.difficulty?.toUpperCase()})`
                         : opponent?.name || "WAITING"}
                     </span>
                     <Badge className="h-5 px-1.5 text-[10px] font-black bg-emerald-500 text-white border-none">O</Badge>
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600/70">Opponent</span>
                 </div>
-               </CardContent>
+              </CardContent>
             </Card>
           </div>
 
           {/* Game Board */}
           <div className="relative flex-1 bg-muted/5 rounded-[40px] border-4 border-muted/20 p-12 flex items-center justify-center min-h-[500px] shadow-inner">
-             {!gameFull ? (
-               <div className="flex flex-col items-center gap-8 animate-pulse text-center max-w-sm">
-                 <div className="w-24 h-24 rounded-[30px] border-4 border-dashed border-primary animate-spin" />
-                 <div className="space-y-3">
-                   <h2 className="text-3xl font-black uppercase tracking-tighter">Finding Opponent</h2>
-                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">
-                     Challenge the world or share your room code with a partner.
-                   </p>
-                 </div>
-                 <Button variant="outline" className="h-12 px-8 font-black uppercase tracking-widest text-[10px] border-primary/20 shadow-lg" onClick={copyLink}>
-                   <Copy className="w-4 h-4 mr-2" /> {copied ? "LINK COPIED" : "COPY INVITE LINK"}
-                 </Button>
-               </div>
-             ) : (
-               <div className="w-full">
-                <TicTacToeBoard 
-                    board={gameState?.board || Array(9).fill(null)} 
-                    onMove={makeMove}
-                    disabled={!isMyTurn || gameState?.isGameOver}
+            {!gameFull ? (
+              <div className="flex flex-col items-center gap-8 animate-pulse text-center max-w-sm">
+                <div className="w-24 h-24 rounded-[30px] border-4 border-dashed border-primary animate-spin" />
+                <div className="space-y-3">
+                  <h2 className="text-3xl font-black uppercase tracking-tighter">Finding Opponent</h2>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">
+                    Challenge the world or share your room code with a partner.
+                  </p>
+                </div>
+                <Button variant="outline" className="h-12 px-8 font-black uppercase tracking-widest text-[10px] border-primary/20 shadow-lg" onClick={copyLink}>
+                  <Copy className="w-4 h-4 mr-2" /> {copied ? "LINK COPIED" : "COPY INVITE LINK"}
+                </Button>
+              </div>
+            ) : (
+              <div className="w-full">
+                <TicTacToeBoard
+                  board={gameState?.board || Array(9).fill(null)}
+                  onMove={makeMove}
+                  disabled={!isMyTurn || gameState?.isGameOver}
                 />
 
                 {/* Game Over Overlay */}
                 {gameState?.isGameOver && (
-                    <div className="absolute inset-0 z-30 bg-background/40 backdrop-blur-xl rounded-[40px] flex items-center justify-center p-8 animate-in fade-in duration-500">
+                  <div className="absolute inset-0 z-30 bg-background/40 backdrop-blur-xl rounded-[40px] flex items-center justify-center p-8 animate-in fade-in duration-500">
                     <Card className="w-full max-w-md border-4 border-primary shadow-[20px_20px_0px_0px_rgba(var(--primary),0.1)] animate-in zoom-in-95 duration-500">
-                        <CardHeader className="text-center pb-6">
-                        <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl", 
-                            gameState.winnerId === user.id ? "bg-yellow-500 text-white" : "bg-muted text-muted-foreground")}>
-                            <Trophy className="w-10 h-10" />
+                      <CardHeader className="text-center pb-6">
+                        <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl",
+                          gameState.winnerId === user.id ? "bg-yellow-500 text-white" : "bg-muted text-muted-foreground")}>
+                          <Trophy className="w-10 h-10" />
                         </div>
                         <CardTitle className="text-5xl font-black tracking-tighter uppercase mb-2">
-                            {gameState.winnerId === user.id ? "VICTORY!" : gameState.winnerId === "draw" ? "STALEMATE" : "DEFEAT"}
+                          {gameState.winnerId === user.id ? "VICTORY!" : gameState.winnerId === "draw" ? "STALEMATE" : "DEFEAT"}
                         </CardTitle>
                         <CardDescription className="text-xs font-black uppercase tracking-widest opacity-60">
-                            {gameState.winnerId === user.id ? "Absolute Masterclass." : "Tactical Standstill."}
+                          {gameState.winnerId === user.id ? "Absolute Masterclass." : "Tactical Standstill."}
                         </CardDescription>
-                        </CardHeader>
-                        <CardFooter className="flex flex-col gap-4 pt-6 pb-10 px-10">
-                        <Button 
-                            className="w-full h-14 gap-3 text-lg font-black uppercase tracking-widest shadow-2xl shadow-primary/20" 
-                            onClick={requestRematch}
-                            disabled={gameState.rematchVotes.includes(user.id)}
+                      </CardHeader>
+                      <CardFooter className="flex flex-col gap-4 pt-6 pb-10 px-10">
+                        <Button
+                          className="w-full h-14 gap-3 text-lg font-black uppercase tracking-widest shadow-2xl shadow-primary/20"
+                          onClick={requestRematch}
+                          disabled={gameState.rematchVotes.includes(user.id)}
                         >
-                            <RefreshCw className={cn("w-5 h-5", gameState.rematchVotes.includes(user.id) ? "animate-spin" : "")} />
-                            {gameState.rematchVotes.includes(user.id) ? "WAITING..." : "REMATCH"}
+                          <RefreshCw className={cn("w-5 h-5", gameState.rematchVotes.includes(user.id) ? "animate-spin" : "")} />
+                          {gameState.rematchVotes.includes(user.id) ? "WAITING..." : "REMATCH"}
                         </Button>
                         <Button variant="ghost" className="w-full font-black uppercase tracking-widest text-[10px] opacity-50 hover:opacity-100" onClick={() => router.push("/game/tictactoe")}>
-                            EXIT TO LOBBY
+                          EXIT TO LOBBY
                         </Button>
-                        </CardFooter>
+                      </CardFooter>
                     </Card>
-                    </div>
+                  </div>
                 )}
-               </div>
-             )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -545,71 +546,71 @@ function TicTacToeContent() {
             </TabsList>
 
             <TabsContent value="chat" className="flex-1 mt-0 pt-6 flex flex-col gap-4 overflow-hidden">
-               <Card className="flex-1 flex flex-col border-2 border-muted/50 shadow-none bg-card rounded-[30px] overflow-hidden">
-                 <ScrollArea className="flex-1 p-6">
-                   <div className="space-y-6">
-                     {messages.length === 0 && (
-                       <div className="flex flex-col items-center justify-center py-20 opacity-10 gap-4">
-                         <MessageSquare className="w-12 h-12" />
-                         <p className="text-[10px] font-black uppercase tracking-[0.2em]">Comm-Link Active</p>
-                       </div>
-                     )}
-                     {messages.map((m, i) => {
-                       const isMe = m.senderId === user.id;
-                       return (
-                         <div key={i} className={`flex flex-col gap-1.5 ${isMe ? "items-end" : "items-start"}`}>
-                           <span className="text-[10px] font-black uppercase text-muted-foreground opacity-50 px-1 tracking-widest">
-                             {m.senderName}
-                           </span>
-                           <div className={`px-5 py-2.5 rounded-2xl text-xs font-medium max-w-[85%] shadow-sm ${isMe ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-muted text-foreground rounded-tl-none border border-border/50"}`}>
-                             {m.text}
-                           </div>
-                         </div>
-                       );
-                     })}
-                     <div ref={chatEndRef} />
-                   </div>
-                 </ScrollArea>
-                 <CardFooter className="p-4 bg-muted/20 border-t">
-                    <form onSubmit={sendMessage} className="flex w-full gap-3">
-                      <Input 
-                        placeholder="SEND MESSAGE..." 
-                        className="h-11 bg-background border-2 border-transparent focus-visible:border-primary/20 font-bold text-xs rounded-xl pl-5" 
-                        value={chatInput}
-                        onChange={e => setChatInput(e.target.value)}
-                      />
-                      <Button size="icon" className="h-11 w-11 shrink-0 rounded-xl shadow-xl transition-transform active:scale-90">
-                        <Send className="w-4 h-4" />
-                      </Button>
-                    </form>
-                 </CardFooter>
-               </Card>
+              <Card className="flex-1 flex flex-col border-2 border-muted/50 shadow-none bg-card rounded-[30px] overflow-hidden">
+                <ScrollArea className="flex-1 p-6">
+                  <div className="space-y-6">
+                    {messages.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-20 opacity-10 gap-4">
+                        <MessageSquare className="w-12 h-12" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em]">Comm-Link Active</p>
+                      </div>
+                    )}
+                    {messages.map((m, i) => {
+                      const isMe = m.senderId === user.id;
+                      return (
+                        <div key={i} className={`flex flex-col gap-1.5 ${isMe ? "items-end" : "items-start"}`}>
+                          <span className="text-[10px] font-black uppercase text-muted-foreground opacity-50 px-1 tracking-widest">
+                            {m.senderName}
+                          </span>
+                          <div className={`px-5 py-2.5 rounded-2xl text-xs font-medium max-w-[85%] shadow-sm ${isMe ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-muted text-foreground rounded-tl-none border border-border/50"}`}>
+                            {m.text}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div ref={chatEndRef} />
+                  </div>
+                </ScrollArea>
+                <CardFooter className="p-4 bg-muted/20 border-t">
+                  <form onSubmit={sendMessage} className="flex w-full gap-3">
+                    <Input
+                      placeholder="SEND MESSAGE..."
+                      className="h-11 bg-background border-2 border-transparent focus-visible:border-primary/20 font-bold text-xs rounded-xl pl-5"
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                    />
+                    <Button size="icon" className="h-11 w-11 shrink-0 rounded-xl shadow-xl transition-transform active:scale-90">
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </form>
+                </CardFooter>
+              </Card>
             </TabsContent>
 
             <TabsContent value="info" className="flex-1 mt-0 pt-6">
-               <Card className="bg-card border-2 border-muted/50 rounded-[30px] p-8">
-                 <CardHeader className="p-0 mb-8">
-                   <CardTitle className="text-xl font-black uppercase tracking-tighter">Tactical Briefing</CardTitle>
-                 </CardHeader>
-                 <CardContent className="p-0 space-y-6 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/80 leading-relaxed">
-                   <div className="flex items-start gap-4 p-4 rounded-2xl bg-muted/30">
-                     <Badge className="h-6 w-6 p-0 justify-center shrink-0 font-black">01</Badge>
-                     <p>Capture three cells in a row (horizontal, vertical, or diagonal) to win the duel.</p>
-                   </div>
-                   <div className="flex items-start gap-4 p-4 rounded-2xl bg-muted/30">
-                     <Badge className="h-6 w-6 p-0 justify-center shrink-0 font-black">02</Badge>
-                     <p>Player X (Host) initiates the opening move in the first engagement.</p>
-                   </div>
-                   <div className="flex items-start gap-4 p-4 rounded-2xl bg-muted/30">
-                     <Badge className="h-6 w-6 p-0 justify-center shrink-0 font-black">03</Badge>
-                     <p>rematches toggle starting initiative for competitive balance.</p>
-                   </div>
-                   <div className="flex items-start gap-4 p-4 rounded-2xl bg-muted/30">
-                     <Badge className="h-6 w-6 p-0 justify-center shrink-0 font-black">04</Badge>
-                     <p>All engagement data is logged for historical performance analysis.</p>
-                   </div>
-                 </CardContent>
-               </Card>
+              <Card className="bg-card border-2 border-muted/50 rounded-[30px] p-8">
+                <CardHeader className="p-0 mb-8">
+                  <CardTitle className="text-xl font-black uppercase tracking-tighter">Tactical Briefing</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 space-y-6 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/80 leading-relaxed">
+                  <div className="flex items-start gap-4 p-4 rounded-2xl bg-muted/30">
+                    <Badge className="h-6 w-6 p-0 justify-center shrink-0 font-black">01</Badge>
+                    <p>Capture three cells in a row (horizontal, vertical, or diagonal) to win the duel.</p>
+                  </div>
+                  <div className="flex items-start gap-4 p-4 rounded-2xl bg-muted/30">
+                    <Badge className="h-6 w-6 p-0 justify-center shrink-0 font-black">02</Badge>
+                    <p>Player X (Host) initiates the opening move in the first engagement.</p>
+                  </div>
+                  <div className="flex items-start gap-4 p-4 rounded-2xl bg-muted/30">
+                    <Badge className="h-6 w-6 p-0 justify-center shrink-0 font-black">03</Badge>
+                    <p>rematches toggle starting initiative for competitive balance.</p>
+                  </div>
+                  <div className="flex items-start gap-4 p-4 rounded-2xl bg-muted/30">
+                    <Badge className="h-6 w-6 p-0 justify-center shrink-0 font-black">04</Badge>
+                    <p>All engagement data is logged for historical performance analysis.</p>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>
@@ -621,9 +622,9 @@ function TicTacToeContent() {
 export default function TicTacToePage() {
   return (
     <Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center bg-background text-foreground font-black uppercase tracking-[0.2em]">
-            Initializing Arena...
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground font-black uppercase tracking-[0.2em]">
+        Initializing Arena...
+      </div>
     }>
       <TicTacToeContent />
     </Suspense>
