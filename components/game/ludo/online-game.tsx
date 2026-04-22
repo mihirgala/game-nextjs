@@ -38,7 +38,7 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
             console.log("Emitting game:join for room:", roomId);
             socket.emit("game:join", {
                 roomId,
-                game: "ludoMihir",
+                game: "ludo",
                 userImage: user.image
             });
         });

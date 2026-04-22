@@ -1,4 +1,4 @@
-import { PlayerColor } from "@/components/game/mihir-ludo/types";
+import { PlayerColor } from "@/components/game/ludo/types";
 export const BOARD_SIZE = 15;
 
 export interface Coord {

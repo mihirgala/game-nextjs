@@ -10,8 +10,7 @@ import {
     SAFE_SPOTS
 } from './board-constants';
 import { cn } from '@/lib/utils';
-import { Dice } from '@/components/game/mihir-ludo/dice';
-import { useLudoLogic } from './game-logic';
+import { Dice } from '@/components/game/ludo/dice';
 
 const COLOR_MAP: Record<PlayerColor, string> = {
     red: 'bg-red-500',
@@ -79,16 +78,16 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
 
     if (!gameStarted) {
         return (
-            <div className="flex flex-col items-center justify-center gap-8 p-10 bg-white min-h-screen text-black font-sans">
-                <h1 className="text-5xl font-black tracking-tighter border-b-8 border-black pb-2">LUDO LOCAL</h1>
+            <div className="flex flex-col items-center justify-center gap-8 p-10 bg-background min-h-screen text-foreground">
+                <h1 className="text-5xl font-black tracking-tighter border-b-8 border-foreground pb-2 uppercase">Ludo Arena</h1>
                 <div className="flex flex-col gap-6 w-full max-w-md">
-                    <p className="text-xl font-bold uppercase text-center">Select Players</p>
+                    <p className="text-xl font-bold uppercase text-center opacity-70">Select Players</p>
                     <div className="grid grid-cols-3 gap-4">
                         {[2, 3, 4].map((count) => (
                             <button
                                 key={count}
                                 onClick={() => startGame(count)}
-                                className="border-4 border-black p-6 text-3xl font-black hover:bg-black hover:text-white transition-colors active:scale-95"
+                                className="border-4 border-foreground p-6 text-3xl font-black hover:bg-foreground hover:text-background transition-all active:scale-95 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)]"
                             >
                                 {count}
                             </button>
@@ -100,23 +99,23 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
     }
 
     return (
-        <div className="flex flex-col items-center justify-center gap-4 p-4 bg-white min-h-screen text-black font-sans">
-            <div className="flex flex-col border-4 border-black p-6 gap-6 max-w-2xl w-full shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-                <div className="flex justify-between items-center border-b-4 border-black pb-2">
+        <div className="flex flex-col items-center justify-center gap-4 p-4 bg-background min-h-screen text-foreground">
+            <div className="flex flex-col border-4 border-foreground p-6 gap-6 max-w-2xl w-full shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)] dark:shadow-[8px_8px_0px_0px_rgba(255,255,255,0.1)] bg-card">
+                <div className="flex justify-between items-center border-b-4 border-foreground pb-2">
                     <div className="text-2xl font-black uppercase">
                         TURN: <span className={cn(COLOR_TEXT[currentTurn], "underline")}>{currentTurn}</span>
                     </div>
                     {winners.length > 0 && (
-                        <div className="text-sm font-bold bg-black text-white px-2 py-1">
+                        <div className="text-xs font-bold bg-foreground text-background px-3 py-1 uppercase tracking-widest">
                             WINNERS: {winners.join(', ')}
                         </div>
                     )}
                 </div>
                 
                 <div className="flex justify-center">
-                    <div className="border-4 border-black p-1 bg-black">
+                    <div className="border-4 border-foreground p-1 bg-foreground shadow-lg">
                         <div 
-                            className="grid grid-cols-[repeat(15,1fr)] bg-white"
+                            className="grid grid-cols-[repeat(15,1fr)] bg-background"
                             style={{ width: 'min(90vw, 550px)', height: 'min(90vw, 550px)' }}
                         >
                             {Array.from({ length: BOARD_SIZE }).map((_, r) => (
@@ -129,25 +128,25 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                                         <div 
                                             key={`${r}-${c}`}
                                             className={cn(
-                                                "border border-gray-200 flex items-center justify-center relative overflow-hidden",
+                                                "border border-muted flex items-center justify-center relative overflow-hidden",
                                                 cell.type === 'base' && {
-                                                    red: 'bg-red-50', green: 'bg-green-50', yellow: 'bg-yellow-50', blue: 'bg-blue-50'
+                                                    red: 'bg-red-500/5', green: 'bg-green-500/5', yellow: 'bg-yellow-500/5', blue: 'bg-blue-500/5'
                                                 }[cell.color!],
                                                 cell.type === 'home-path' && COLOR_MAP[cell.color!],
                                                 cell.type === 'track' && cell.color && COLOR_MAP[cell.color!],
-                                                cell.type === 'finish' && 'bg-white',
-                                                cell.type === 'empty' && 'bg-white'
+                                                cell.type === 'finish' && 'bg-background',
+                                                cell.type === 'empty' && 'bg-background'
                                             )}
                                             style={{ minWidth: 0, minHeight: 0 }}
                                         >
                                             {cell.type === 'finish' && r === 7 && c === 7 && (
                                                 <div className="absolute inset-0 overflow-hidden">
-                                                    <div className="w-full h-full relative border-2 border-black">
+                                                    <div className="w-full h-full relative border-2 border-foreground">
                                                         <div className="absolute inset-0 bg-red-500" style={{ clipPath: 'polygon(0 0, 50% 50%, 0 100%)' }} />
                                                         <div className="absolute inset-0 bg-green-500" style={{ clipPath: 'polygon(0 0, 100% 0, 50% 50%)' }} />
                                                         <div className="absolute inset-0 bg-yellow-400" style={{ clipPath: 'polygon(100% 0, 100% 100%, 50% 50%)' }} />
                                                         <div className="absolute inset-0 bg-blue-500" style={{ clipPath: 'polygon(0 100%, 100% 100%, 50% 50%)' }} />
-                                                        <div className="absolute inset-[25%] bg-white border-2 border-black rounded-full" />
+                                                        <div className="absolute inset-[25%] bg-background border-2 border-foreground rounded-full" />
                                                     </div>
                                                 </div>
                                             )}
@@ -159,14 +158,13 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                                                     cell.color === 'green' && "bg-green-500",
                                                     cell.color === 'yellow' && "bg-yellow-400",
                                                     cell.color === 'blue' && "bg-blue-500",
-                                                    // Higher opacity for the "End" cell
                                                     ((r === 7 && c === 6) || (r === 6 && c === 7) || (r === 7 && c === 8) || (r === 8 && c === 7)) && "opacity-80"
                                                 )} />
                                             )}
 
                                             {trackIndex !== -1 && SAFE_SPOTS.includes(trackIndex) && (
                                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-                                                    <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current">
+                                                    <svg viewBox="0 0 24 24" className="w-6 h-6 fill-foreground">
                                                         <path d="M12 .587l3.668 7.431 8.332 1.21-6.001 5.85 1.416 8.297L12 18.897l-7.415 3.898 1.416-8.297-6.001-5.85 8.332-1.21L12 .587z" />
                                                     </svg>
                                                 </div>
@@ -178,14 +176,14 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                                             {r === 7 && c === 14 && <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40 text-yellow-600 text-xl font-black">←</div>}
                                             {r === 14 && c === 7 && <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40 text-blue-500 text-xl font-black">↑</div>}
                                             
-                                            <span className="absolute inset-0 flex items-center justify-center text-[8px] opacity-10 select-none pointer-events-none font-bold">
+                                            <span className="absolute inset-0 flex items-center justify-center text-[8px] opacity-10 select-none pointer-events-none font-bold text-foreground">
                                                 {trackIndex !== -1 && (trackIndex + 1)}
                                                 {((r === 7 && c === 6) || (r === 6 && c === 7) || (r === 7 && c === 8) || (r === 8 && c === 7)) && "End"}
                                             </span>
 
                                             <div className={cn(
                                                 "absolute inset-0 flex flex-wrap gap-0.5 items-center justify-center p-0.5 pointer-events-none",
-                                                ((r === 7 && c === 7) || (r === 7 && c === 6) || (r === 6 && c === 7) || (r === 7 && c === 8) || (r === 8 && c === 7)) && "flex-col" // Stack pieces in finish area
+                                                ((r === 7 && c === 7) || (r === 7 && c === 6) || (r === 6 && c === 7) || (r === 7 && c === 8) || (r === 8 && c === 7)) && "flex-col"
                                             )}>
                                                 {cellPieces.map((p) => {
                                                     const canMovePiece = diceValue !== null && (
@@ -200,13 +198,12 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                                                             onClick={() => movePiece(p.id)}
                                                             disabled={p.color !== currentTurn || diceValue === null || !canMovePiece || gameState.isAnimating}
                                                             className={cn(
-                                                                "w-4 h-4 sm:w-5 sm:h-5 border-2 border-black rounded-full shadow-sm z-10 transition-all duration-300 pointer-events-auto",
+                                                                "w-4 h-4 sm:w-5 sm:h-5 border-2 border-foreground rounded-full shadow-sm z-10 transition-all duration-300 pointer-events-auto",
                                                                 COLOR_MAP[p.color],
-                                                                p.color === currentTurn && diceValue !== null && canMovePiece && "ring-2 ring-white scale-125 z-20 animate-pulse",
+                                                                p.color === currentTurn && diceValue !== null && canMovePiece && "ring-2 ring-background scale-125 z-20 animate-pulse",
                                                                 (p.color !== currentTurn || !canMovePiece) && "opacity-50 cursor-not-allowed",
-                                                                // Custom positioning in the finish area cells
                                                                 ((r === 7 && c === 6) || (r === 6 && c === 7) || (r === 7 && c === 8) || (r === 8 && c === 7)) && 
-                                                                p.position === 61 && "scale-90" // Slightly smaller when finished
+                                                                p.position === 61 && "scale-90"
                                                             )}
                                                         />
                                                     );
@@ -228,7 +225,7 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                                 onClick={rollDice} 
                                 disabled={diceValue !== null || isRolling || !canInteract || gameState.isAnimating}
                                 className={cn(
-                                    "w-full py-4 font-black transition-all active:scale-95 disabled:opacity-50 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]",
+                                    "w-full py-4 font-black transition-all active:scale-95 disabled:opacity-50 border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,0.2)]",
                                     COLOR_MAP[currentTurn],
                                     "text-white text-xl uppercase tracking-widest",
                                     (!canInteract && diceValue === null) && "grayscale opacity-50 cursor-not-allowed"
@@ -240,12 +237,11 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                     </div>
                     <button 
                         onClick={() => startGame(gameState.playerCount)}
-                        className="text-xs font-bold uppercase underline text-right opacity-50 hover:opacity-100"
+                        className="text-xs font-bold uppercase underline text-right opacity-50 hover:opacity-100 hover:text-primary transition-colors"
                     >
                         Restart Game
                     </button>
                 </div>
-
             </div>
         </div>
     );

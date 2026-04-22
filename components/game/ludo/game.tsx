@@ -1,17 +1,16 @@
 'use client';
 
 import React, { useState, Suspense } from 'react'
-import { Board } from './board'
 import { LocalGame } from './local-game'
 import { LudoOnline } from './online-game'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { nanoid } from 'nanoid'
-import { Gamepad2, Users, Monitor, ArrowLeft, Plus, Play } from 'lucide-react'
+import { Users, Monitor, ArrowLeft, Plus } from 'lucide-react'
 
-export const MihirLudo = () => {
+export const LudoMenu = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const roomId = searchParams.get('roomId');
@@ -19,17 +18,17 @@ export const MihirLudo = () => {
 
     if (roomId) {
         return (
-            <main className='bg-white text-black min-h-screen'>
+            <main className='bg-background text-foreground min-h-screen'>
                 <LudoOnline roomId={roomId} />
             </main>
         );
     }
 
     return (
-        <main className='bg-white text-black min-h-screen flex items-center justify-center p-4'>
+        <main className='bg-background text-foreground min-h-screen flex items-center justify-center p-4'>
             <div className="w-full max-w-4xl space-y-12">
                 <div className="text-center space-y-4">
-                    <h1 className="text-6xl font-black tracking-tighter border-b-8 border-black pb-2 inline-block">
+                    <h1 className="text-6xl font-black tracking-tighter border-b-8 border-primary pb-2 inline-block">
                         LUDO ARCADIA
                     </h1>
                     <p className="text-xl font-bold uppercase opacity-50 tracking-[0.2em]">Select Your Arena</p>
@@ -37,12 +36,12 @@ export const MihirLudo = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* LOCAL PLAY */}
-                    <Card className="border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all">
-                        <CardHeader className="border-b-4 border-black bg-gray-50">
+                    <Card className="border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)] dark:shadow-[8px_8px_0px_0px_rgba(255,255,255,0.1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] transition-all bg-card">
+                        <CardHeader className="border-b-4 border-foreground bg-muted/50">
                             <CardTitle className="flex items-center gap-3 text-2xl font-black uppercase">
                                 <Monitor className="w-8 h-8" /> Local Match
                             </CardTitle>
-                            <CardDescription className="text-black font-bold uppercase">
+                            <CardDescription className="text-foreground/70 font-bold uppercase">
                                 Play against friends on the same machine
                             </CardDescription>
                         </CardHeader>
@@ -53,8 +52,8 @@ export const MihirLudo = () => {
                                     {[2, 3, 4].map(count => (
                                         <Button 
                                             key={count}
-                                            onClick={() => router.push(`/game/ludoMihir?local=true&players=${count}`)}
-                                            className="h-16 text-3xl font-black border-4 border-black bg-white text-black hover:bg-black hover:text-white"
+                                            onClick={() => router.push(`/game/ludo?local=true&players=${count}`)}
+                                            className="h-16 text-3xl font-black border-4 border-foreground bg-background text-foreground hover:bg-foreground hover:text-background"
                                         >
                                             {count}
                                         </Button>
@@ -65,12 +64,12 @@ export const MihirLudo = () => {
                     </Card>
 
                     {/* ONLINE PLAY */}
-                    <Card className="border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all">
-                        <CardHeader className="border-b-4 border-black bg-gray-50">
+                    <Card className="border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)] dark:shadow-[8px_8px_0px_0px_rgba(255,255,255,0.1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] transition-all bg-card">
+                        <CardHeader className="border-b-4 border-foreground bg-muted/50">
                             <CardTitle className="flex items-center gap-3 text-2xl font-black uppercase">
                                 <Users className="w-8 h-8" /> Online Duel
                             </CardTitle>
-                            <CardDescription className="text-black font-bold uppercase">
+                            <CardDescription className="text-foreground/70 font-bold uppercase">
                                 Challenge players across the web
                             </CardDescription>
                         </CardHeader>
@@ -82,12 +81,12 @@ export const MihirLudo = () => {
                                         placeholder="ROOM CODE" 
                                         value={joinCode}
                                         onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                                        className="h-12 border-4 border-black font-black uppercase tracking-widest"
+                                        className="h-12 border-4 border-foreground font-black uppercase tracking-widest bg-background"
                                     />
                                     <Button 
-                                        onClick={() => router.push(`/game/ludoMihir?roomId=${joinCode}`)}
+                                        onClick={() => router.push(`/game/ludo?roomId=${joinCode}`)}
                                         disabled={!joinCode}
-                                        className="h-12 border-4 border-black px-6 bg-black text-white hover:bg-white hover:text-black"
+                                        className="h-12 border-4 border-foreground px-6 bg-foreground text-background hover:bg-background hover:text-foreground"
                                     >
                                         JOIN
                                     </Button>
@@ -96,16 +95,16 @@ export const MihirLudo = () => {
                             
                             <div className="relative">
                                 <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t-2 border-black" />
+                                    <span className="w-full border-t-2 border-foreground/20" />
                                 </div>
                                 <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-white px-4 font-black">OR</span>
+                                    <span className="bg-card px-4 font-black">OR</span>
                                 </div>
                             </div>
 
                             <Button 
-                                onClick={() => router.push(`/game/ludoMihir?roomId=${nanoid(6).toUpperCase()}`)}
-                                className="w-full h-16 text-xl font-black uppercase tracking-widest border-4 border-black bg-white text-black hover:bg-black hover:text-white"
+                                onClick={() => router.push(`/game/ludo?roomId=${nanoid(6).toUpperCase()}`)}
+                                className="w-full h-16 text-xl font-black uppercase tracking-widest border-4 border-foreground bg-background text-foreground hover:bg-foreground hover:text-background"
                             >
                                 <Plus className="mr-2" /> Host New Game
                             </Button>
@@ -120,16 +119,15 @@ export const MihirLudo = () => {
 export const Game = () => {
     const searchParams = useSearchParams();
     const isLocal = searchParams.get('local') === 'true';
-    const playerCount = parseInt(searchParams.get('players') || '4');
 
     if (isLocal) {
         return (
-            <main className='bg-white text-black'>
+            <main className='bg-background text-foreground min-h-screen'>
                 <div className="p-4">
                     <Button 
                         variant="link" 
-                        onClick={() => window.location.href = '/game/ludoMihir'}
-                        className="font-black uppercase tracking-widest text-black flex items-center gap-2"
+                        onClick={() => window.location.href = '/game/ludo'}
+                        className="font-black uppercase tracking-widest text-foreground flex items-center gap-2 hover:opacity-70"
                     >
                         <ArrowLeft className="w-4 h-4" /> Exit to Menu
                     </Button>
@@ -140,8 +138,12 @@ export const Game = () => {
     }
 
     return (
-        <Suspense fallback={<div>Loading Arena...</div>}>
-            <MihirLudo />
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-background text-foreground font-black uppercase tracking-widest">
+                Loading Arena...
+            </div>
+        }>
+            <LudoMenu />
         </Suspense>
     );
 };

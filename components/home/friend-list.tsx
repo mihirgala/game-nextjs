@@ -21,6 +21,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Users,
   UserPlus,
   Clock,
@@ -31,8 +39,11 @@ import {
   X,
   ChevronLeft,
   Send,
-  Gamepad
+  Gamepad,
+  Target,
+  Grid3X3
 } from "lucide-react";
+import { nanoid } from "nanoid";
 
 interface FriendListProps {
   user: User;
@@ -52,7 +63,6 @@ export function FriendList({ user }: FriendListProps) {
   const [dmInput, setDmInput] = useState("");
   const [socket] = useAtom(socketAtom);
 
-  // Sync dmTarget status if friend goes online/offline
   const activeFriend = friends.find(f => f.friend.id === dmTarget?.id)?.friend;
   const currentDmTarget = activeFriend || dmTarget;
 
@@ -62,13 +72,13 @@ export function FriendList({ user }: FriendListProps) {
       if (dmTarget && msg.senderId === dmTarget.id) {
         setDmMessages((prev) => [...prev, msg]);
       } else {
-        // Optional: show a notification toast for DMs from others
         toast.info(`New message from ${msg.senderName}`, { duration: 10000 });
       }
     };
     socket.on("dm:receive", handleReceiveDM);
     return () => { socket.off("dm:receive", handleReceiveDM); };
   }, [socket, dmTarget]);
+
   const handleSearch = () => {
     startTransition(async () => {
       const results = await findUsers(searchQuery);
@@ -112,7 +122,6 @@ export function FriendList({ user }: FriendListProps) {
       success: (res: any) => {
         if (res.error) throw new Error(res.error);
         setPending((prev) => prev.filter((r) => r.id !== requestId));
-        // Optional: emit refresh if we want them to know it was rejected immediately
         return "Invitation declined.";
       },
       error: (err) => err.message,
@@ -150,10 +159,25 @@ export function FriendList({ user }: FriendListProps) {
     }
   };
 
+  const handleInvite = (friendId: string, friendName: string, game: 'ludo' | 'tictactoe') => {
+    if (!socket) return;
+    const roomId = nanoid(6).toUpperCase();
+    (socket as any).emit("game:invite", {
+      fromId: user.id,
+      fromName: user.name,
+      toId: friendId,
+      game,
+      roomId
+    });
+    toast.success(`Invite sent to ${friendName} for ${game.toUpperCase()}!`, {
+      description: `Room ID: ${roomId}`
+    });
+  };
+
   if (currentDmTarget) {
     return (
-      <Card className="flex flex-col h-[600px] animate-in slide-in-from-right duration-300">
-        <CardHeader className="flex flex-row items-center gap-4 py-3 border-b shrink-0">
+      <Card className="flex flex-col h-[600px] animate-in slide-in-from-right duration-300 border-primary/10">
+        <CardHeader className="flex flex-row items-center gap-4 py-3 border-b shrink-0 bg-muted/20">
           <Button variant="ghost" size="icon" onClick={() => setDmTarget(null)} className="h-8 w-8">
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -170,11 +194,11 @@ export function FriendList({ user }: FriendListProps) {
           </div>
         </CardHeader>
         <CardContent className="flex-1 p-0 overflow-hidden">
-          <ScrollArea className="h-full p-4">
+          <ScrollArea className="h-full p-4 bg-muted/5">
             <div className="space-y-4">
               {dmMessages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground/50 gap-2">
-                  <MessageSquare className="w-10 h-10" />
+                  <MessageSquare className="w-10 h-10 opacity-20" />
                   <p className="text-sm">No messages yet. Say hi!</p>
                 </div>
               )}
@@ -182,7 +206,7 @@ export function FriendList({ user }: FriendListProps) {
                 const isMe = m.senderId === user.id;
                 return (
                   <div key={m.id ?? i} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[80%] px-4 py-2 rounded-2xl text-sm ${isMe ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-muted text-foreground rounded-tl-none"}`}>
+                    <div className={`max-w-[80%] px-4 py-2 rounded-2xl text-sm shadow-sm ${isMe ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-card border text-foreground rounded-tl-none"}`}>
                       {m.text}
                     </div>
                   </div>
@@ -191,15 +215,15 @@ export function FriendList({ user }: FriendListProps) {
             </div>
           </ScrollArea>
         </CardContent>
-        <CardFooter className="p-4 border-t shrink-0">
+        <CardFooter className="p-4 border-t bg-card shrink-0">
           <form onSubmit={(e) => { e.preventDefault(); handleSendDM(); }} className="flex w-full gap-2">
             <Input
               placeholder="Message..."
               value={dmInput}
               onChange={(e) => setDmInput(e.target.value)}
-              className="flex-1 bg-muted border-none h-10"
+              className="flex-1 bg-muted/50 border-none h-10 ring-offset-background"
             />
-            <Button size="icon" className="h-10 w-10 shadow-sm" disabled={!dmInput.trim()}>
+            <Button size="icon" className="h-10 w-10 shadow-sm transition-transform active:scale-90" disabled={!dmInput.trim()}>
               <Send className="h-4 w-4" />
             </Button>
           </form>
@@ -236,8 +260,8 @@ export function FriendList({ user }: FriendListProps) {
         <TabsContent value="friends" className="mt-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {friends.length === 0 && (
-              <Card className="col-span-full border-dashed p-12 text-center text-muted-foreground flex flex-col items-center gap-3">
-                <Users className="w-12 h-12 opacity-20" />
+              <Card className="col-span-full border-dashed p-12 text-center text-muted-foreground flex flex-col items-center gap-3 bg-muted/5">
+                <Users className="w-12 h-12 opacity-10" />
                 <p className="text-sm">Your friends list is currently empty.</p>
                 <Button variant="outline" size="sm" onClick={() => setSubTab("find")} className="mt-2">
                   Find Players
@@ -245,10 +269,10 @@ export function FriendList({ user }: FriendListProps) {
               </Card>
             )}
             {friends.map((f) => (
-              <Card key={f.id} className="transition-all hover:border-primary/20">
+              <Card key={f.id} className="transition-all hover:border-primary/20 hover:shadow-sm bg-card group">
                 <CardHeader className="p-4 flex flex-row items-center gap-4 space-y-0">
                   <div className="relative">
-                    <Avatar className="h-10 w-10 border-2">
+                    <Avatar className="h-10 w-10 border-2 transition-transform group-hover:scale-105">
                       <AvatarImage src={f.friend.image ?? ""} />
                       <AvatarFallback>{f.friend.name?.charAt(0) || "U"}</AvatarFallback>
                     </Avatar>
@@ -260,15 +284,33 @@ export function FriendList({ user }: FriendListProps) {
                   </div>
                 </CardHeader>
                 <CardFooter className="p-4 pt-0 flex gap-2">
-                  <Button variant="secondary" size="sm" className="flex-1 h-8" onClick={() => openDM(f.friend)}>
-                    <MessageSquare className="h-3.5 w-3.5 mr-2" />
+                  <Button variant="secondary" size="sm" className="flex-1 h-8 text-[10px] font-bold uppercase tracking-tight" onClick={() => openDM(f.friend)}>
+                    <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
                     Chat
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1 h-8">
-                    <Gamepad className="h-3.5 w-3.5 mr-2" />
-                    Invite
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleRemove(f.friend.id, f.friend.name)}>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger>
+                      <Button variant="outline" size="sm" className="flex-1 h-8 text-[10px] font-bold uppercase tracking-tight" disabled={!f.friend.isOnline}>
+                        <Gamepad className="h-3.5 w-3.5 mr-1.5" />
+                        Invite
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50">Select Game</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => handleInvite(f.friend.id, f.friend.name, 'ludo')} className="gap-2 cursor-pointer">
+                        <Target className="w-4 h-4 text-red-500" />
+                        <span className="font-bold">Ludo Arena</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleInvite(f.friend.id, f.friend.name, 'tictactoe')} className="gap-2 cursor-pointer">
+                        <Grid3X3 className="w-4 h-4 text-blue-500" />
+                        <span className="font-bold">Tic Tac Toe</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors" onClick={() => handleRemove(f.friend.id, f.friend.name)}>
                     <UserMinus className="h-3.5 w-3.5" />
                   </Button>
                 </CardFooter>
@@ -281,7 +323,7 @@ export function FriendList({ user }: FriendListProps) {
           <div className="space-y-6">
             {pending.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">Invitations</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground px-1">Invitations</h3>
                 {pending.map((r) => (
                   <Card key={r.id}>
                     <CardHeader className="p-4 flex flex-row items-center gap-4 space-y-0">
@@ -294,7 +336,7 @@ export function FriendList({ user }: FriendListProps) {
                         <CardDescription className="text-xs">Wants to be friends</CardDescription>
                       </div>
                       <div className="flex gap-2">
-                        <Button size="icon" className="h-8 w-8 rounded-full shadow-sm" onClick={() => handleAccept(r.id, r.from)}>
+                        <Button size="icon" className="h-8 w-8 rounded-full shadow-md bg-primary hover:scale-105 transition-transform" onClick={() => handleAccept(r.id, r.from)}>
                           <Check className="h-4 w-4" />
                         </Button>
                         <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleReject(r.id)}>
@@ -309,9 +351,9 @@ export function FriendList({ user }: FriendListProps) {
 
             {sent.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">Outgoing</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground px-1">Outgoing</h3>
                 {sent.map((r) => (
-                  <Card key={r.id} className="opacity-70 bg-muted/20">
+                  <Card key={r.id} className="opacity-70 bg-muted/20 border-dashed">
                     <CardHeader className="p-4 flex flex-row items-center gap-4 space-y-0">
                       <Avatar className="h-10 w-10 border border-dashed">
                         <AvatarImage src={r.to.image ?? ""} />
@@ -328,8 +370,8 @@ export function FriendList({ user }: FriendListProps) {
             )}
 
             {pending.length === 0 && sent.length === 0 && (
-              <Card className="border-dashed p-12 text-center text-muted-foreground flex flex-col items-center gap-3">
-                <Clock className="w-12 h-12 opacity-20" />
+              <Card className="border-dashed p-12 text-center text-muted-foreground flex flex-col items-center gap-3 bg-muted/5">
+                <Clock className="w-12 h-12 opacity-10" />
                 <p className="text-sm">No pending friend requests.</p>
               </Card>
             )}
@@ -342,14 +384,14 @@ export function FriendList({ user }: FriendListProps) {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name or email..."
+                  placeholder="Search players..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  className="pl-10 bg-background"
+                  className="pl-10 bg-background border-primary/20"
                 />
               </div>
-              <Button onClick={handleSearch} disabled={isPending || searchQuery.length < 2}>
+              <Button onClick={handleSearch} disabled={isPending || searchQuery.length < 2} className="font-bold">
                 Search
               </Button>
             </CardContent>
@@ -360,7 +402,7 @@ export function FriendList({ user }: FriendListProps) {
               const isAlreadyFriend = friends.some((f) => f.friend.id === u.id);
               const hasSentRequest = sent.some((s) => s.to.id === u.id);
               return (
-                <Card key={u.id}>
+                <Card key={u.id} className="bg-card">
                   <CardHeader className="p-4 flex flex-row items-center gap-4 space-y-0">
                     <Avatar className="h-10 w-10 border">
                       <AvatarImage src={u.image ?? ""} />
@@ -371,13 +413,13 @@ export function FriendList({ user }: FriendListProps) {
                       <CardDescription className="text-xs truncate">{u.email}</CardDescription>
                     </div>
                     {isAlreadyFriend ? (
-                      <Badge variant="secondary" className="gap-1.5">
+                      <Badge variant="secondary" className="gap-1.5 font-bold">
                         <Check className="h-3 w-3" /> Friends
                       </Badge>
                     ) : hasSentRequest ? (
-                      <Badge variant="outline">Pending</Badge>
+                      <Badge variant="outline" className="font-bold">Pending</Badge>
                     ) : (
-                      <Button variant="outline" size="sm" onClick={() => handleSendRequest(u.id)} disabled={isPending}>
+                      <Button variant="outline" size="sm" onClick={() => handleSendRequest(u.id)} disabled={isPending} className="font-bold text-[10px] uppercase">
                         <UserPlus className="h-3.5 w-3.5 mr-2" />
                         Add
                       </Button>
