@@ -9,12 +9,14 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { nanoid } from 'nanoid'
 import { Users, Monitor, ArrowLeft, Plus } from 'lucide-react'
+import { cn } from '@/lib/utils';
 
 export const LudoMenu = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const roomId = searchParams.get('roomId');
     const [joinCode, setJoinCode] = useState('');
+    const [localPlayerCount, setLocalPlayerCount] = useState(4);
 
     if (roomId) {
         return (
@@ -46,19 +48,33 @@ export const LudoMenu = () => {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="p-8">
-                            <div className="flex flex-col gap-4">
-                                <div className="text-xs font-black uppercase opacity-50">Select Player Count</div>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {[2, 3, 4].map(count => (
-                                        <Button 
-                                            key={count}
-                                            onClick={() => router.push(`/game/ludo?local=true&players=${count}`)}
-                                            className="h-16 text-3xl font-black border-4 border-foreground bg-background text-foreground hover:bg-foreground hover:text-background"
-                                        >
-                                            {count}
-                                        </Button>
-                                    ))}
+                            <div className="flex flex-col gap-6">
+                                <div className="space-y-3">
+                                    <div className="text-xs font-black uppercase opacity-50">Select Player Count</div>
+                                    <div className="flex gap-3">
+                                        {[2, 3, 4].map(count => (
+                                            <button
+                                                key={count}
+                                                onClick={() => setLocalPlayerCount(count)}
+                                                className={cn(
+                                                    "flex-1 h-14 text-2xl font-black border-4 border-foreground transition-all active:scale-95",
+                                                    localPlayerCount === count
+                                                        ? "bg-foreground text-background shadow-none translate-x-1 translate-y-1"
+                                                        : "bg-background text-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] hover:translate-x-0.5 hover:translate-y-0.5"
+                                                )}
+                                            >
+                                                {count}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
+
+                                <Button
+                                    onClick={() => router.push(`/game/ludo?local=true&players=${localPlayerCount}`)}
+                                    className="w-full h-16 text-xl font-black uppercase tracking-widest border-4 border-foreground bg-foreground text-background hover:bg-background hover:text-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] active:shadow-none active:translate-x-1 active:translate-y-1"
+                                >
+                                    Start Local Game
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
@@ -77,13 +93,13 @@ export const LudoMenu = () => {
                             <div className="space-y-3">
                                 <div className="text-xs font-black uppercase opacity-50">Have a code?</div>
                                 <div className="flex gap-2">
-                                    <Input 
-                                        placeholder="ROOM CODE" 
+                                    <Input
+                                        placeholder="ROOM CODE"
                                         value={joinCode}
                                         onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                                         className="h-12 border-4 border-foreground font-black uppercase tracking-widest bg-background"
                                     />
-                                    <Button 
+                                    <Button
                                         onClick={() => router.push(`/game/ludo?roomId=${joinCode}`)}
                                         disabled={!joinCode}
                                         className="h-12 border-4 border-foreground px-6 bg-foreground text-background hover:bg-background hover:text-foreground"
@@ -92,7 +108,7 @@ export const LudoMenu = () => {
                                     </Button>
                                 </div>
                             </div>
-                            
+
                             <div className="relative">
                                 <div className="absolute inset-0 flex items-center">
                                     <span className="w-full border-t-2 border-foreground/20" />
@@ -102,7 +118,7 @@ export const LudoMenu = () => {
                                 </div>
                             </div>
 
-                            <Button 
+                            <Button
                                 onClick={() => router.push(`/game/ludo?roomId=${nanoid(6).toUpperCase()}`)}
                                 className="w-full h-16 text-xl font-black uppercase tracking-widest border-4 border-foreground bg-background text-foreground hover:bg-foreground hover:text-background"
                             >
@@ -124,8 +140,8 @@ export const Game = () => {
         return (
             <main className='bg-background text-foreground min-h-screen'>
                 <div className="p-4">
-                    <Button 
-                        variant="link" 
+                    <Button
+                        variant="link"
                         onClick={() => window.location.href = '/game/ludo'}
                         className="font-black uppercase tracking-widest text-foreground flex items-center gap-2 hover:opacity-70"
                     >

@@ -36,9 +36,12 @@ export const getNextTurn = (
   count: number,
   forceNext: boolean = false
 ): PlayerColor => {
-  if (diceValue === 6 && !forceNext) return currentColor;
-
   const activeColors = getActiveColors(count);
+  const currentPlayerPieces = pieces.filter(p => p.color === currentColor);
+  const isFinished = currentPlayerPieces.every(p => p.position === 61);
+
+  if (diceValue === 6 && !forceNext && !isFinished) return currentColor;
+
   const currentIndex = activeColors.indexOf(currentColor);
 
   for (let i = 1; i < activeColors.length; i++) {
@@ -166,13 +169,24 @@ export const performMove = (state: GameState, pieceId: string): GameState => {
   newPieces = newPieces.map(p => p.id === pieceId ? { ...p, position: nextPos } : p);
   if (nextPos === 61) extraTurn = true;
 
-  const isFinished = newPieces.filter(p => p.color === currentTurn).every(p => p.position === 61);
-  let newWinners = winners;
+  const playerPiecesAfterMove = newPieces.filter(p => p.color === currentTurn);
+  const isFinished = playerPiecesAfterMove.every(p => p.position === 61);
+  
+  let newWinners = [...winners];
   if (isFinished && !winners.includes(currentTurn)) {
-    newWinners = [...winners, currentTurn];
+    newWinners.push(currentTurn);
   }
 
-  const nextTurn = (extraTurn || diceValue === 6)
+  // Determine if the game should end
+  let isGameOver = false;
+  if (playerCount === 2) {
+    if (newWinners.length >= 1) isGameOver = true;
+  } else {
+    // 3 or 4 players: ends when only one player is left
+    if (newWinners.length >= playerCount - 1) isGameOver = true;
+  }
+
+  const nextTurn = ((extraTurn || diceValue === 6) && !isFinished && !isGameOver)
     ? currentTurn
     : getNextTurn(currentTurn, diceValue, newPieces, playerCount);
 
@@ -182,6 +196,8 @@ export const performMove = (state: GameState, pieceId: string): GameState => {
     diceValue: null,
     winners: newWinners,
     currentTurn: nextTurn,
+    isGameOver,
+    status: isGameOver ? 'finished' : state.status,
   };
 };
 

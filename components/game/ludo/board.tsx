@@ -39,6 +39,7 @@ interface BoardProps {
     movePiece: (pieceId: string) => void;
     startGame: (count: number) => void;
     testRollDice?: (val: number) => void;
+    testSetPos?: (pos: number) => void;
     canInteract?: boolean;
     serverOffset?: number;
 }
@@ -47,28 +48,42 @@ const PlayerIndicator = (props: {
     player: any, 
     isCurrentTurn: boolean, 
     timerStartedAt?: number,
+    remainingTime?: number,
     position: 'tl' | 'tr' | 'bl' | 'br',
     serverOffset?: number
 }) => {
-    const { player, isCurrentTurn, timerStartedAt, position, serverOffset = 0 } = props;
+    const { player, isCurrentTurn, timerStartedAt, remainingTime, position, serverOffset = 0 } = props;
     const [progress, setProgress] = React.useState(100);
 
     React.useEffect(() => {
-        if (!isCurrentTurn || !timerStartedAt) {
+        if (!isCurrentTurn) {
+            setProgress(100);
+            return;
+        }
+
+        // If server provides remainingTime, use it directly
+        if (typeof remainingTime === 'number') {
+            setProgress((remainingTime / 20) * 100);
+            return;
+        }
+
+        // Fallback to calculation if remainingTime isn't provided (e.g. legacy/local)
+        const pTimer = player.timerStartedAt;
+        if (!pTimer) {
             setProgress(100);
             return;
         }
 
         const update = () => {
             const now = Date.now() + (serverOffset || 0);
-            const elapsed = (now - timerStartedAt) / 1000;
+            const elapsed = (now - pTimer) / 1000;
             const remaining = Math.max(0, 20 - elapsed);
             setProgress((remaining / 20) * 100);
         };
 
         const interval = setInterval(update, 50);
         return () => clearInterval(interval);
-    }, [isCurrentTurn, timerStartedAt, serverOffset]);
+    }, [isCurrentTurn, player.timerStartedAt, remainingTime, serverOffset]);
 
     const posClasses = {
         tl: "-top-16 -left-2 rounded-t-sm",
@@ -92,7 +107,7 @@ const PlayerIndicator = (props: {
                 )} />
                 {isCurrentTurn && (
                     <span className="text-[12px] font-black text-white drop-shadow-md animate-pulse">
-                        {Math.ceil((progress / 100) * 20)}s
+                        {typeof remainingTime === 'number' ? remainingTime : Math.ceil((progress / 100) * 20)}s
                     </span>
                 )}
             </div>
@@ -123,7 +138,7 @@ const PlayerIndicator = (props: {
 };
 
 
-export const Board = ({ gameState, rollDice, movePiece, startGame, testRollDice, canInteract = true, serverOffset = 0 }: BoardProps) => {
+export const Board = ({ gameState, rollDice, movePiece, startGame, testRollDice, testSetPos, canInteract = true, serverOffset = 0 }: BoardProps) => {
     const { pieces, currentTurn, diceValue, isRolling, winners, gameStarted } = gameState;
 
     const getCellType = (r: number, c: number) => {
@@ -169,30 +184,107 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, testRollDice,
         return gameState.players?.find(p => p.color === color);
     };
 
-    if (!gameStarted) {
+    const [selectedCount, setSelectedCount] = React.useState(4);
+
+    const isGameOver = gameState.isGameOver || gameState.status === 'finished';
+
+    if (!gameStarted && !isGameOver) {
         return (
-            <div className="flex flex-col items-center justify-center gap-8 p-10 bg-background min-h-screen text-foreground">
-                <h1 className="text-5xl font-black tracking-tighter border-b-8 border-foreground pb-2 uppercase">Ludo Arena</h1>
-                <div className="flex flex-col gap-6 w-full max-w-md">
-                    <p className="text-xl font-bold uppercase text-center opacity-70">Select Players</p>
-                    <div className="grid grid-cols-3 gap-4">
-                        {[2, 3, 4].map((count) => (
-                            <button
-                                key={count}
-                                onClick={() => startGame(count)}
-                                className="border-4 border-foreground p-6 text-3xl font-black hover:bg-foreground hover:text-background transition-all active:scale-95 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)]"
-                            >
-                                {count}
-                            </button>
-                        ))}
+            <div className="flex flex-col items-center justify-center gap-12 p-10 bg-background min-h-screen text-foreground">
+                <div className="text-center space-y-4">
+                    <h1 className="text-6xl font-black tracking-tighter border-b-8 border-foreground pb-2 uppercase">Ludo Arena</h1>
+                    <p className="text-xl font-bold uppercase opacity-50 tracking-widest">Prepare for Battle</p>
+                </div>
+
+                <div className="flex flex-col gap-8 w-full max-w-sm">
+                    <div className="space-y-4">
+                        <p className="text-sm font-black uppercase opacity-70 text-center">Select Player Count</p>
+                        <div className="flex gap-4">
+                            {[2, 3, 4].map((count) => (
+                                <button
+                                    key={count}
+                                    onClick={() => setSelectedCount(count)}
+                                    className={cn(
+                                        "flex-1 h-20 text-4xl font-black border-4 border-foreground transition-all active:scale-95",
+                                        selectedCount === count 
+                                            ? "bg-foreground text-background shadow-none translate-x-1 translate-y-1" 
+                                            : "bg-background text-foreground shadow-[6px_6px_0px_0px_rgba(0,0,0,0.2)] hover:translate-x-0.5 hover:translate-y-0.5"
+                                    )}
+                                >
+                                    {count}
+                                </button>
+                            ))}
+                        </div>
                     </div>
+
+                    <button
+                        onClick={() => startGame(selectedCount)}
+                        className="w-full py-6 text-2xl font-black uppercase tracking-widest border-4 border-foreground bg-foreground text-background hover:bg-background hover:text-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)] transition-all active:shadow-none active:translate-x-1 active:translate-y-1"
+                    >
+                        Enter Arena
+                    </button>
                 </div>
             </div>
         );
     }
 
+
+
     return (
         <div className="flex flex-col lg:flex-row items-center justify-center lg:items-start p-2 lg:p-10 bg-background min-h-screen text-foreground overflow-hidden gap-4 lg:gap-16">
+            {isGameOver && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-xl animate-in fade-in duration-500">
+                    <div className="relative max-w-lg w-full p-1 border-8 border-foreground bg-background shadow-[12px_12px_0px_0px_rgba(0,0,0,0.3)] rotate-1">
+                        <div className="p-8 border-4 border-foreground bg-background flex flex-col items-center gap-8">
+                            <div className="text-center space-y-2">
+                                <h2 className="text-6xl font-black uppercase italic tracking-tighter border-b-8 border-foreground pb-2">Game Over</h2>
+                                <p className="text-sm font-black uppercase opacity-50 tracking-[0.3em]">Battle Results</p>
+                            </div>
+
+                            <div className="w-full space-y-4">
+                                {winners.map((color, idx) => {
+                                    const player = getPlayerByColor(color);
+                                    return (
+                                        <div 
+                                            key={color} 
+                                            className={cn(
+                                                "flex items-center justify-between p-4 border-4 border-foreground shadow-[6px_6px_0px_0px_rgba(0,0,0,0.1)]",
+                                                COLOR_MAP[color]
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <span className="text-4xl font-black text-white italic">#{idx + 1}</span>
+                                                <span className="text-xl font-black text-white uppercase">{player?.name || color}</span>
+                                            </div>
+                                            {idx === 0 && <span className="text-3xl">🏆</span>}
+                                        </div>
+                                    );
+                                })}
+
+                                {gameState.players?.filter(p => !winners.includes(p.color)).map((player) => (
+                                    <div 
+                                        key={player.color} 
+                                        className="flex items-center justify-between p-4 border-4 border-foreground bg-muted shadow-[6px_6px_0px_0px_rgba(0,0,0,0.1)]"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-4xl font-black italic opacity-50">#L</span>
+                                            <span className="text-xl font-black uppercase opacity-50">{player.name}</span>
+                                        </div>
+                                        <span className="text-sm font-black uppercase opacity-50 italic">Eliminated</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button
+                                onClick={() => window.location.href = '/game/ludo'}
+                                className="w-full py-4 text-xl font-black uppercase tracking-widest border-4 border-foreground bg-foreground text-background hover:bg-background hover:text-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)] transition-all active:shadow-none active:translate-x-1 active:translate-y-1"
+                            >
+                                Return to Lobby
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="relative flex items-center justify-center py-20">
                 <div className="relative border-4 lg:border-8 border-foreground p-1 bg-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]">
                     {/* Corner Indicators Attached to the Board */}
@@ -200,7 +292,7 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, testRollDice,
                         <PlayerIndicator 
                             player={getPlayerByColor('red')} 
                             isCurrentTurn={currentTurn === 'red'} 
-                            timerStartedAt={gameState.timerStartedAt}
+                            remainingTime={gameState.remainingTime}
                             position="tl"
                             serverOffset={serverOffset}
                         />
@@ -209,7 +301,7 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, testRollDice,
                         <PlayerIndicator 
                             player={getPlayerByColor('green')} 
                             isCurrentTurn={currentTurn === 'green'} 
-                            timerStartedAt={gameState.timerStartedAt}
+                            remainingTime={gameState.remainingTime}
                             position="tr"
                             serverOffset={serverOffset}
                         />
@@ -218,7 +310,7 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, testRollDice,
                         <PlayerIndicator 
                             player={getPlayerByColor('blue')} 
                             isCurrentTurn={currentTurn === 'blue'} 
-                            timerStartedAt={gameState.timerStartedAt}
+                            remainingTime={gameState.remainingTime}
                             position="bl"
                             serverOffset={serverOffset}
                         />
@@ -227,7 +319,7 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, testRollDice,
                         <PlayerIndicator 
                             player={getPlayerByColor('yellow')} 
                             isCurrentTurn={currentTurn === 'yellow'} 
-                            timerStartedAt={gameState.timerStartedAt}
+                            remainingTime={gameState.remainingTime}
                             position="br"
                             serverOffset={serverOffset}
                         />
@@ -247,6 +339,7 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, testRollDice,
                                             key={`${r}-${c}`}
                                             className={cn(
                                                 "border border-muted flex items-center justify-center relative overflow-hidden",
+                                                cell.type === 'base-slot' && 'bg-background',
                                                 cell.type === 'base' && {
                                                     red: 'bg-red-500/5', green: 'bg-green-500/5', yellow: 'bg-yellow-500/5', blue: 'bg-blue-500/5'
                                                 }[cell.color!],
@@ -285,6 +378,17 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, testRollDice,
                                                     <svg viewBox="0 0 24 24" className="w-6 h-6 fill-foreground">
                                                         <path d="M12 .587l3.668 7.431 8.332 1.21-6.001 5.85 1.416 8.297L12 18.897l-7.415 3.898 1.416-8.297-6.001-5.85 8.332-1.21L12 .587z" />
                                                     </svg>
+                                                </div>
+                                            )}
+
+                                            {cell.type === 'base-slot' && cell.color && winners.includes(cell.color) && (
+                                                <div className={cn(
+                                                    "absolute inset-0 flex items-center justify-center z-30 animate-in zoom-in-50 duration-500",
+                                                    COLOR_MAP[cell.color]
+                                                )}>
+                                                    <span className="text-white font-black text-xl lg:text-3xl italic drop-shadow-lg">
+                                                        #{winners.indexOf(cell.color) + 1}
+                                                    </span>
                                                 </div>
                                             )}
 
@@ -354,25 +458,67 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, testRollDice,
                     </div>
                 )}
                 
-                {process.env.NODE_ENV !== 'production' && testRollDice && (
+                {testRollDice && (
                     <div className="flex flex-col gap-2 p-3 border-2 border-dashed border-primary/30 rounded-lg bg-primary/5">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-primary opacity-60">Debug Dice (Dev Only)</p>
-                        <div className="flex gap-1.5">
-                            {[1, 2, 3, 4, 5, 6].map(val => (
-                                <button
-                                    key={val}
-                                    onClick={() => testRollDice(val)}
-                                    className="flex-1 py-1.5 border-2 border-primary/30 font-black hover:bg-primary hover:text-white transition-all text-xs rounded"
-                                >
-                                    {val}
-                                </button>
-                            ))}
+                        <p className="text-[9px] font-black uppercase tracking-widest text-primary opacity-60">Debug Tools (Dev Only)</p>
+                        
+                        <div className="space-y-1">
+                            <p className="text-[8px] font-bold uppercase opacity-50">Force Dice</p>
+                            <div className="flex gap-1.5">
+                                {[1, 2, 3, 4, 5, 6].map(val => (
+                                    <button
+                                        key={val}
+                                        onClick={() => testRollDice(val)}
+                                        className="flex-1 py-1 border-2 border-primary/30 font-black hover:bg-primary hover:text-white transition-all text-xs rounded"
+                                    >
+                                        {val}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
+
+                        {testSetPos && (
+                            <div className="space-y-2 pt-1 border-t border-primary/10">
+                                <p className="text-[8px] font-bold uppercase opacity-50">Teleport Pieces ({currentTurn})</p>
+                                <div className="flex gap-1.5">
+                                    <button
+                                        onClick={() => testSetPos(-1)}
+                                        className="flex-1 py-1 bg-red-500/10 border-2 border-red-500/30 text-red-600 font-black text-[10px] uppercase rounded hover:bg-red-500 hover:text-white"
+                                    >
+                                        Home
+                                    </button>
+                                    <button
+                                        onClick={() => testSetPos(61)}
+                                        className="flex-1 py-1 bg-green-500/10 border-2 border-green-500/30 text-green-600 font-black text-[10px] uppercase rounded hover:bg-green-500 hover:text-white"
+                                    >
+                                        Win
+                                    </button>
+                                </div>
+                                <div className="flex gap-1.5 items-center">
+                                    <input 
+                                        type="number" 
+                                        placeholder="Pos" 
+                                        id="debug-pos"
+                                        className="w-12 h-7 bg-background border-2 border-primary/30 rounded text-center text-xs font-black"
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            const val = parseInt((document.getElementById('debug-pos') as HTMLInputElement).value);
+                                            if (!isNaN(val)) testSetPos(val);
+                                        }}
+                                        className="flex-1 h-7 bg-primary/10 border-2 border-primary/30 text-primary font-black text-[10px] uppercase rounded hover:bg-primary hover:text-white"
+                                    >
+                                        Teleport to X
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         <button 
                             onClick={() => startGame(gameState.playerCount)}
                             className="w-full mt-1 py-1.5 border-2 border-red-500/30 text-red-500 font-black hover:bg-red-500 hover:text-white transition-all text-[9px] uppercase rounded"
                         >
-                            Restart Game (Reset Board)
+                            Reset Board
                         </button>
                     </div>
                 )}

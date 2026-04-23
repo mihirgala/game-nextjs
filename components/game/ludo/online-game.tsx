@@ -87,8 +87,11 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
             gameStarted: room.status === 'playing',
             pityCounters: room.pityCounters || { red: 0, green: 0, yellow: 0, blue: 0 },
             isAnimating: room.isAnimating || false,
+            isGameOver: room.isGameOver || false,
             timerStartedAt: room.timerStartedAt,
-            players: room.players || []
+            remainingTime: room.remainingTime,
+            players: room.players || [],
+            status: room.status
         };
     }, []);
 
@@ -184,7 +187,9 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
                     diceValue: null,
                     winners: finalState.winners,
                     turnIndex: nextTurnIndex,
-                    isAnimating: false
+                    isAnimating: false,
+                    isGameOver: finalState.isGameOver,
+                    status: finalState.status
                 });
                 return;
             }
@@ -218,6 +223,16 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
             winners: [],
             turnIndex: 0
         });
+    };
+
+    const testSetPos = (pos: number) => {
+        if (!isHost || !remoteRoom) return;
+        
+        const newPieces = gameState.pieces.map(p => 
+            p.color === gameState.currentTurn ? { ...p, position: pos } : p
+        );
+
+        syncState({ pieces: newPieces });
     };
 
     // Bot Logic (Run by host)
@@ -261,7 +276,9 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
                         pieces: nextState.pieces,
                         diceValue: null,
                         winners: nextState.winners,
-                        turnIndex: nextTurnIndex
+                        turnIndex: nextTurnIndex,
+                        isGameOver: nextState.isGameOver,
+                        status: nextState.status
                     });
                 }
             }
@@ -315,6 +332,7 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
             movePiece={movePiece}
             startGame={startGame}
             testRollDice={testRollDice}
+            testSetPos={testSetPos}
             canInteract={isMyTurn}
             serverOffset={serverOffset}
         />
