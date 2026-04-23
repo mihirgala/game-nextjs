@@ -19,6 +19,7 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
     const { data: session } = authClient.useSession();
     const user = session?.user;
 
+    const [serverOffset, setServerOffset] = useState(0);
     const [remoteRoom, setRemoteRoom] = useState<any>(null);
     const [isValidating, setIsValidating] = useState(true);
 
@@ -27,9 +28,17 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
 
         setIsValidating(true);
 
+        const validateTimer = setTimeout(() => {
+            if (isValidating) {
+                console.warn("Validation timeout - forcing validation end");
+                setIsValidating(false);
+            }
+        }, 5000);
+
         socket.emit("room:validate", { roomId, allowCreate: true }, (res: any) => {
             console.log("Room validation response:", res);
             setIsValidating(false);
+            clearTimeout(validateTimer);
             if (!res.valid) {
                 toast.error(res.error || "Room is invalid.");
                 return;
@@ -45,6 +54,12 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
 
         const handleState = (state: any) => {
             console.log("Received game state:", state);
+            if (state.lastActivity) {
+                // Simple clock sync: serverOffset = serverTime - clientTime
+                // We use lastActivity as a proxy for current server time
+                const offset = state.lastActivity - Date.now();
+                setServerOffset(offset);
+            }
             if (state.pieces) {
                 console.log(`  Piece count in received state: ${state.pieces.length}`);
             }
@@ -54,6 +69,8 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
         socket.on("game:state", handleState);
 
         return () => {
+            console.log("Leaving room:", roomId);
+            socket.emit("game:leave", { roomId });
             socket.off("game:state", handleState);
         };
     }, [socket, roomId, user?.id]);
@@ -69,7 +86,9 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
             playerCount: room.players?.length || 0,
             gameStarted: room.status === 'playing',
             pityCounters: room.pityCounters || { red: 0, green: 0, yellow: 0, blue: 0 },
-            isAnimating: room.isAnimating || false
+            isAnimating: room.isAnimating || false,
+            timerStartedAt: room.timerStartedAt,
+            players: room.players || []
         };
     }, []);
 
@@ -113,6 +132,31 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
                 return currentRoom;
             });
         }, 600);
+    };
+
+    const testRollDice = (val: number) => {
+        if (!isMyTurn || gameState.isRolling) return;
+        
+        setRemoteRoom((currentRoom: any) => {
+            if (!currentRoom) return currentRoom;
+            const nextState = performRoll(mappedGameState(currentRoom), val);
+
+            if (nextState._pendingTurn) {
+                const finalTurnColor = nextState._pendingTurn;
+                delete nextState._pendingTurn;
+                syncState(nextState);
+
+                setTimeout(() => {
+                    syncState({
+                        diceValue: null,
+                        turnIndex: currentRoom.players.findIndex((p: any) => p.color === finalTurnColor)
+                    });
+                }, 1000);
+            } else {
+                syncState(nextState);
+            }
+            return currentRoom;
+        });
     };
 
     const movePiece = (pieceId: string) => {
@@ -270,7 +314,9 @@ export const LudoOnline = ({ roomId }: OnlineGameProps) => {
             rollDice={rollDice}
             movePiece={movePiece}
             startGame={startGame}
+            testRollDice={testRollDice}
             canInteract={isMyTurn}
+            serverOffset={serverOffset}
         />
     );
 };

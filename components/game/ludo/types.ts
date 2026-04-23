@@ -21,4 +21,6 @@ export interface GameState {
   isGameOver?: boolean;
   winnerId?: string | null;
   isAnimating?: boolean;
+  timerStartedAt?: number;
+  players?: any[];
 }

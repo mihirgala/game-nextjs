@@ -26,15 +26,104 @@ const COLOR_TEXT: Record<PlayerColor, string> = {
     blue: 'text-blue-500',
 };
 
+const COLOR_BORDER: Record<PlayerColor, string> = {
+    red: 'border-red-500',
+    green: 'border-green-500',
+    yellow: 'border-yellow-400',
+    blue: 'border-blue-500',
+};
+
 interface BoardProps {
     gameState: GameState;
     rollDice: () => void;
     movePiece: (pieceId: string) => void;
     startGame: (count: number) => void;
+    testRollDice?: (val: number) => void;
     canInteract?: boolean;
+    serverOffset?: number;
 }
 
-export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract = true }: BoardProps) => {
+const PlayerIndicator = (props: { 
+    player: any, 
+    isCurrentTurn: boolean, 
+    timerStartedAt?: number,
+    position: 'tl' | 'tr' | 'bl' | 'br',
+    serverOffset?: number
+}) => {
+    const { player, isCurrentTurn, timerStartedAt, position, serverOffset = 0 } = props;
+    const [progress, setProgress] = React.useState(100);
+
+    React.useEffect(() => {
+        if (!isCurrentTurn || !timerStartedAt) {
+            setProgress(100);
+            return;
+        }
+
+        const update = () => {
+            const now = Date.now() + (serverOffset || 0);
+            const elapsed = (now - timerStartedAt) / 1000;
+            const remaining = Math.max(0, 20 - elapsed);
+            setProgress((remaining / 20) * 100);
+        };
+
+        const interval = setInterval(update, 50);
+        return () => clearInterval(interval);
+    }, [isCurrentTurn, timerStartedAt, serverOffset]);
+
+    const posClasses = {
+        tl: "-top-16 -left-2 rounded-t-sm",
+        tr: "-top-16 -right-2 rounded-t-sm",
+        bl: "-bottom-16 -left-2 rounded-b-sm",
+        br: "-bottom-16 -right-2 rounded-b-sm",
+    };
+
+    return (
+        <div className={cn(
+            "absolute w-28 h-16 lg:w-32 lg:h-16 flex flex-col items-center justify-center border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] z-20 transition-all duration-300",
+            COLOR_MAP[player.color as PlayerColor],
+            isCurrentTurn ? "scale-110 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.2)] ring-4 ring-white/30" : "opacity-90 grayscale-[0.2]",
+            posClasses[position]
+        )}>
+            {/* Status & Timer Header */}
+            <div className="flex items-center gap-2 mb-1">
+                <div className={cn(
+                    "w-3 h-3 rounded-full border-2 border-foreground shadow-inner",
+                    player.isConnected ? "bg-green-400 animate-pulse" : "bg-red-500"
+                )} />
+                {isCurrentTurn && (
+                    <span className="text-[12px] font-black text-white drop-shadow-md animate-pulse">
+                        {Math.ceil((progress / 100) * 20)}s
+                    </span>
+                )}
+            </div>
+            
+            <p className="text-[11px] font-black uppercase text-white tracking-tight drop-shadow-md">
+                {player.name}
+            </p>
+
+            {/* Linear Timer at Bottom */}
+            <div className="absolute bottom-0 left-0 right-0 h-2 lg:h-1.5 bg-black/40 overflow-hidden">
+                <div 
+                    className={cn(
+                        "h-full bg-white transition-all duration-100 ease-linear",
+                        progress < 30 ? "bg-red-500" : progress < 60 ? "bg-yellow-400" : "bg-white"
+                    )}
+                    style={{ width: `${progress}%` }}
+                />
+            </div>
+
+            {/* Connection line to board */}
+            <div className={cn(
+                "absolute bg-foreground",
+                (position === 'tl' || position === 'tr') ? "h-2 w-1.5 -bottom-2" : "h-2 w-1.5 -top-2",
+                (position === 'tl' || position === 'bl') ? "left-8" : "right-8"
+            )} />
+        </div>
+    );
+};
+
+
+export const Board = ({ gameState, rollDice, movePiece, startGame, testRollDice, canInteract = true, serverOffset = 0 }: BoardProps) => {
     const { pieces, currentTurn, diceValue, isRolling, winners, gameStarted } = gameState;
 
     const getCellType = (r: number, c: number) => {
@@ -76,6 +165,10 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
         });
     };
 
+    const getPlayerByColor = (color: PlayerColor) => {
+        return gameState.players?.find(p => p.color === color);
+    };
+
     if (!gameStarted) {
         return (
             <div className="flex flex-col items-center justify-center gap-8 p-10 bg-background min-h-screen text-foreground">
@@ -99,25 +192,50 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
     }
 
     return (
-        <div className="flex flex-col items-center justify-center gap-4 p-4 bg-background min-h-screen text-foreground">
-            <div className="flex flex-col border-4 border-foreground p-6 gap-6 max-w-2xl w-full shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)] dark:shadow-[8px_8px_0px_0px_rgba(255,255,255,0.1)] bg-card">
-                <div className="flex justify-between items-center border-b-4 border-foreground pb-2">
-                    <div className="text-2xl font-black uppercase">
-                        TURN: <span className={cn(COLOR_TEXT[currentTurn], "underline")}>{currentTurn}</span>
-                    </div>
-                    {winners.length > 0 && (
-                        <div className="text-xs font-bold bg-foreground text-background px-3 py-1 uppercase tracking-widest">
-                            WINNERS: {winners.join(', ')}
-                        </div>
+        <div className="flex flex-col lg:flex-row items-center justify-center lg:items-start p-2 lg:p-10 bg-background min-h-screen text-foreground overflow-hidden gap-4 lg:gap-16">
+            <div className="relative flex items-center justify-center py-20">
+                <div className="relative border-4 lg:border-8 border-foreground p-1 bg-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]">
+                    {/* Corner Indicators Attached to the Board */}
+                    {getPlayerByColor('red') && (
+                        <PlayerIndicator 
+                            player={getPlayerByColor('red')} 
+                            isCurrentTurn={currentTurn === 'red'} 
+                            timerStartedAt={gameState.timerStartedAt}
+                            position="tl"
+                            serverOffset={serverOffset}
+                        />
                     )}
-                </div>
-                
-                <div className="flex justify-center">
-                    <div className="border-4 border-foreground p-1 bg-foreground shadow-lg">
-                        <div 
-                            className="grid grid-cols-[repeat(15,1fr)] bg-background"
-                            style={{ width: 'min(90vw, 550px)', height: 'min(90vw, 550px)' }}
-                        >
+                    {getPlayerByColor('green') && (
+                        <PlayerIndicator 
+                            player={getPlayerByColor('green')} 
+                            isCurrentTurn={currentTurn === 'green'} 
+                            timerStartedAt={gameState.timerStartedAt}
+                            position="tr"
+                            serverOffset={serverOffset}
+                        />
+                    )}
+                    {getPlayerByColor('blue') && (
+                        <PlayerIndicator 
+                            player={getPlayerByColor('blue')} 
+                            isCurrentTurn={currentTurn === 'blue'} 
+                            timerStartedAt={gameState.timerStartedAt}
+                            position="bl"
+                            serverOffset={serverOffset}
+                        />
+                    )}
+                    {getPlayerByColor('yellow') && (
+                        <PlayerIndicator 
+                            player={getPlayerByColor('yellow')} 
+                            isCurrentTurn={currentTurn === 'yellow'} 
+                            timerStartedAt={gameState.timerStartedAt}
+                            position="br"
+                            serverOffset={serverOffset}
+                        />
+                    )}
+                    <div 
+                        className="grid grid-cols-[repeat(15,1fr)] bg-background"
+                        style={{ width: 'min(90vw, 750px, 70vh)', height: 'min(90vw, 750px, 70vh)' }}
+                    >
                             {Array.from({ length: BOARD_SIZE }).map((_, r) => (
                                 Array.from({ length: BOARD_SIZE }).map((_, c) => {
                                     const cell = getCellType(r, c);
@@ -171,19 +289,17 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                                             )}
 
                                             {/* Directional Arrows for Home Entrance */}
-                                            {r === 7 && c === 0 && <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40 text-red-500 text-xl font-black">→</div>}
-                                            {r === 0 && c === 7 && <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40 text-green-500 text-xl font-black">↓</div>}
-                                            {r === 7 && c === 14 && <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40 text-yellow-600 text-xl font-black">←</div>}
-                                            {r === 14 && c === 7 && <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40 text-blue-500 text-xl font-black">↑</div>}
+                                            {r === 7 && c === 0 && <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40 text-red-500 text-sm font-black">→</div>}
+                                            {r === 0 && c === 7 && <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40 text-green-500 text-sm font-black">↓</div>}
+                                            {r === 7 && c === 14 && <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40 text-yellow-600 text-sm font-black">←</div>}
+                                            {r === 14 && c === 7 && <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40 text-blue-500 text-sm font-black">↑</div>}
                                             
-                                            <span className="absolute inset-0 flex items-center justify-center text-[8px] opacity-10 select-none pointer-events-none font-bold text-foreground">
-                                                {trackIndex !== -1 && (trackIndex + 1)}
-                                                {((r === 7 && c === 6) || (r === 6 && c === 7) || (r === 7 && c === 8) || (r === 8 && c === 7)) && "End"}
-                                            </span>
-
                                             <div className={cn(
-                                                "absolute inset-0 flex flex-wrap gap-0.5 items-center justify-center p-0.5 pointer-events-none",
-                                                ((r === 7 && c === 7) || (r === 7 && c === 6) || (r === 6 && c === 7) || (r === 7 && c === 8) || (r === 8 && c === 7)) && "flex-col"
+                                                "absolute inset-0 grid gap-0.5 items-center justify-center p-0.5 pointer-events-none",
+                                                cellPieces.length === 1 && "grid-cols-1",
+                                                cellPieces.length === 2 && "grid-cols-2",
+                                                cellPieces.length >= 3 && "grid-cols-2 grid-rows-2",
+                                                ((r === 7 && c === 7) || (r === 7 && c === 6) || (r === 6 && c === 7) || (r === 7 && c === 8) || (r === 8 && c === 7)) && "flex flex-col"
                                             )}>
                                                 {cellPieces.map((p) => {
                                                     const canMovePiece = diceValue !== null && (
@@ -192,18 +308,22 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                                                         (p.position >= 56 && p.position + diceValue <= 61)
                                                     );
 
+                                                    const isMovable = p.color === currentTurn && diceValue !== null && canMovePiece && !gameState.isAnimating;
+
                                                     return (
                                                         <button
                                                             key={p.id}
                                                             onClick={() => movePiece(p.id)}
-                                                            disabled={p.color !== currentTurn || diceValue === null || !canMovePiece || gameState.isAnimating}
+                                                            disabled={!isMovable}
                                                             className={cn(
-                                                                "w-4 h-4 sm:w-5 sm:h-5 border-2 border-foreground rounded-full shadow-sm z-10 transition-all duration-300 pointer-events-auto",
+                                                                "border-2 border-foreground rounded-full shadow-sm z-10 transition-all duration-300 pointer-events-auto relative overflow-hidden",
                                                                 COLOR_MAP[p.color],
-                                                                p.color === currentTurn && diceValue !== null && canMovePiece && "ring-2 ring-background scale-125 z-20 animate-pulse",
-                                                                (p.color !== currentTurn || !canMovePiece) && "opacity-50 cursor-not-allowed",
+                                                                cellPieces.length === 1 ? "w-[18px] h-[18px] sm:w-5 sm:h-5 lg:w-8 lg:h-8" : "w-3 h-3 sm:w-3 sm:h-3 lg:w-5 lg:h-5",
+                                                                isMovable && "ring-2 ring-background scale-110 z-20 shadow-[0_0_10px_rgba(255,255,255,0.5)] movable-stripes",
+                                                                (!canMovePiece && diceValue !== null && p.color === currentTurn) && "opacity-30 grayscale",
+                                                                (p.color !== currentTurn) && "opacity-80",
                                                                 ((r === 7 && c === 6) || (r === 6 && c === 7) || (r === 7 && c === 8) || (r === 8 && c === 7)) && 
-                                                                p.position === 61 && "scale-90"
+                                                                p.position === 61 && "scale-75 opacity-50"
                                                             )}
                                                         />
                                                     );
@@ -213,35 +333,49 @@ export const Board = ({ gameState, rollDice, movePiece, startGame, canInteract =
                                     );
                                 })
                             ))}
-                        </div>
                     </div>
+                </div>
+            </div>
+
+            <div className="flex flex-col gap-6 w-full max-w-sm lg:mt-16 items-center">
+                <div className="flex flex-col items-center justify-center p-4">
+                     <Dice 
+                        value={diceValue} 
+                        isRolling={isRolling} 
+                        color={currentTurn} 
+                        onClick={rollDice}
+                        disabled={diceValue !== null || !canInteract || gameState.isAnimating}
+                     />
                 </div>
 
-                <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-4">
-                         <Dice value={diceValue} isRolling={isRolling} color={currentTurn} />
-                         <div className="flex-1">
-                            <button 
-                                onClick={rollDice} 
-                                disabled={diceValue !== null || isRolling || !canInteract || gameState.isAnimating}
-                                className={cn(
-                                    "w-full py-4 font-black transition-all active:scale-95 disabled:opacity-50 border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,0.2)]",
-                                    COLOR_MAP[currentTurn],
-                                    "text-white text-xl uppercase tracking-widest",
-                                    (!canInteract && diceValue === null) && "grayscale opacity-50 cursor-not-allowed"
-                                )}
-                            >
-                                {isRolling ? 'ROLLING...' : 'ROLL DICE'}
-                            </button>
-                         </div>
+                {winners.length > 0 && (
+                    <div className="bg-foreground text-background p-4 border-4 border-foreground font-black uppercase text-center animate-bounce text-sm">
+                        Winners: {winners.join(' 🏆 ')}
                     </div>
-                    <button 
-                        onClick={() => startGame(gameState.playerCount)}
-                        className="text-xs font-bold uppercase underline text-right opacity-50 hover:opacity-100 hover:text-primary transition-colors"
-                    >
-                        Restart Game
-                    </button>
-                </div>
+                )}
+                
+                {process.env.NODE_ENV !== 'production' && testRollDice && (
+                    <div className="flex flex-col gap-2 p-3 border-2 border-dashed border-primary/30 rounded-lg bg-primary/5">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-primary opacity-60">Debug Dice (Dev Only)</p>
+                        <div className="flex gap-1.5">
+                            {[1, 2, 3, 4, 5, 6].map(val => (
+                                <button
+                                    key={val}
+                                    onClick={() => testRollDice(val)}
+                                    className="flex-1 py-1.5 border-2 border-primary/30 font-black hover:bg-primary hover:text-white transition-all text-xs rounded"
+                                >
+                                    {val}
+                                </button>
+                            ))}
+                        </div>
+                        <button 
+                            onClick={() => startGame(gameState.playerCount)}
+                            className="w-full mt-1 py-1.5 border-2 border-red-500/30 text-red-500 font-black hover:bg-red-500 hover:text-white transition-all text-[9px] uppercase rounded"
+                        >
+                            Restart Game (Reset Board)
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

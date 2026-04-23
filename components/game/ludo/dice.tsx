@@ -9,6 +9,8 @@ interface DiceProps {
   value: number | null;
   isRolling: boolean;
   color: PlayerColor;
+  onClick?: () => void;
+  disabled?: boolean;
 }
 
 const DOTS: Record<number, number[]> = {
@@ -29,7 +31,7 @@ const FACE_ROTATIONS: Record<number, { x: number; y: number }> = {
   6: { x: 90, y: 0 },
 };
 
-export const Dice = ({ value, isRolling, color }: DiceProps) => {
+export const Dice = ({ value, isRolling, color, onClick, disabled }: DiceProps) => {
   const controls = useAnimation();
   const [displayValue, setDisplayValue] = useState(value || 1);
 
@@ -111,9 +113,16 @@ export const Dice = ({ value, isRolling, color }: DiceProps) => {
   };
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div 
-        className="relative w-[50px] h-[50px]"
+    <div className="flex flex-col items-center gap-2">
+      <button 
+        onClick={onClick}
+        disabled={disabled || isRolling}
+        className={cn(
+          "relative w-[60px] h-[60px] transition-all duration-300",
+          !disabled && !isRolling && "hover:scale-110 active:scale-95 cursor-pointer",
+          disabled && "opacity-40 grayscale-[0.5] cursor-not-allowed",
+          isRolling && "scale-105"
+        )}
         style={{ perspective: '600px' }}
       >
         <motion.div
@@ -128,17 +137,22 @@ export const Dice = ({ value, isRolling, color }: DiceProps) => {
           <DiceFace faceValue={5} />
           <DiceFace faceValue={6} />
         </motion.div>
-      </div>
+        
+        {/* Click Glow Effect */}
+        {!disabled && !isRolling && (
+          <div className="absolute inset-0 bg-white/20 rounded-xl blur-xl animate-pulse -z-10" />
+        )}
+      </button>
       
       <div className={cn(
-        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter border-2",
-        color === 'red' && "border-red-500 text-red-500",
-        color === 'green' && "border-green-500 text-green-500",
-        color === 'yellow' && "border-yellow-500 text-yellow-600",
-        color === 'blue' && "border-blue-500 text-blue-500",
+        "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter border-2 bg-background/50 backdrop-blur-sm",
+        color === 'red' && "border-red-500/30 text-red-600",
+        color === 'green' && "border-green-500/30 text-green-600",
+        color === 'yellow' && "border-yellow-500/30 text-yellow-700",
+        color === 'blue' && "border-blue-500/30 text-blue-600",
         isRolling && "animate-pulse"
       )}>
-        {isRolling ? 'Rolling...' : `Result: ${value || '-'}`}
+        {isRolling ? 'ROLLING' : value ? `Result: ${value}` : 'TAP DICE'}
       </div>
     </div>
   );

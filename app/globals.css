@@ -131,3 +131,29 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Ludo Piece Animations */
+@keyframes stripe-move {
+  0% { background-position: 0 0; }
+  100% { background-position: 40px 0; }
+}
+
+.movable-stripes::after {
+  content: "";
+  absolute: inset 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0.5) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  background-size: 20px 20px;
+  animation: stripe-move 0.8s linear infinite;
+  pointer-events: none;
+}
